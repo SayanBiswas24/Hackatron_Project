@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": {
+    "algorand-core": {
+      "source": "algorand-devrel/algorand-agent-skills",
+      "sourceType": "github",
+      "computedHash": "f5fdc37015d784b792e5f389d708794ef1d940892321d266cb93fe52102e0cfc"
+    },
+    "algorand-ecosystem": {
+      "source": "algorand-devrel/algorand-agent-skills",
+      "sourceType": "github",
+      "computedHash": "4975f7977ed8a6f243a3bb19ed20fe29ba37baf9cb0d681ff67615b79d6d0568"
+    },
+    "algorand-frontend": {
+      "source": "algorand-devrel/algorand-agent-skills",
+      "sourceType": "github",
+      "computedHash": "a72f9de38e2de1f29e3f3f7cd8e22f26114c8eab113d441719520c78288465b2"
+    },
+    "algorand-project-setup": {
+      "source": "algorand-devrel/algorand-agent-skills",
+      "sourceType": "github",
+      "computedHash": "ac4697a725e1317453645facaf592fc93d696e45951522a17ddb6eec774f9b6a"
+    },
+    "algorand-x402-typescript": {
+      "source": "algorand-devrel/algorand-agent-skills",
+      "sourceType": "github",
+      "computedHash": "3573a82b78499a03f8f9f89aac2c1d19e7f19af140d8e731cb7eeb80fe385958"
+    }
+  }
+}
