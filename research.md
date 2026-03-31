@@ -6,72 +6,81 @@
 
 ## 2. Core Features & Scope
 *   **Create Multiple Goals:** Define a target amount and a timeline (deadline).
-*   **Deposit Funds:** Deposit ALGO into goal-specific vaults to securely manage funds.
+*   **Deposit Funds:** Deposit USDC into goal-specific vaults to securely manage funds.
 *   **Track Progress:** Monitor both amount saved and percentage towards the target.
 *   **Status Indicators:** Goal status tracking (Active / Completed / Expired).
 *   **Conditional Withdrawals:** Allow withdrawals only when conditions are met (e.g., target reached or deadline passed), enforced on-chain.
+*   **Asset focus:** Shift from ALGO to USDC for stability.
 
-## 3. Recommended Additional Features
-To create a more robust and engaging product, consider these value-adding features:
-*   **Gamification & Milestone Rewards:** Mint an underlying NFT badge (using ARC-19 or ARC-69) or assign reputational points when a goal is successfully achieved to motivate consistent saving.
-*   **Emergency Interventions (Early Withdrawals):** Allow users to withdraw before meeting the deadline or target, but incur a protocol fee/penalty. This penalty can be sent to a treasury or donated.
-*   **Yield Generation (DeFi Integration):** Since the ALGO is locked, integrate with lending protocols (like Folks Finance) to earn yield on the deposited ALGO. This accelerates the saving process.
-*   **Multi-sig Shared Goals:** Allow couples or groups to contribute together towards a common goal (e.g., "Group Vacation") using an application account that tallies contributions from multiple senders.
+## 3. Wallet Integration Strategy
+To maximize accessibility, the platform will support two distinct wallet experiences:
 
-## 4. Algorand Technical Architecture & Implementation
-The application should use **AlgoKit** and **Puya (Algorand Python) / TEALScript** to write the smart contract, taking advantage of modern AVM features.
+### A. Pera Wallet (Standard Web3)
+*   **Target User:** Existing Algorand users and crypto-natives.
+*   **Implementation:** Use `@txnlab/use-wallet` for a unified connection interface.
+*   **UX Flow:** Standard QR code / App-to-App connection. Provides maximum security and self-custody.
 
-### State Management
-*   **Local State vs. Box Storage:** Since a user can have *multiple* goals and Local State is highly limited, **Box Storage** is the optimal choice. It allows dynamic, unbounded storage.
-*   **Box Storage Design:**
-    *   **Box Key:** `/Address (32 bytes)/ + /Goal ID (8 bytes)/`
-    *   **Box Value Structure:**
-        *   `Target Amount` (uint64)
-        *   `Current Balance` (uint64)
-        *   `Deadline` (uint64 - UNIX timestamp)
-        *   `Status` (uint8 - 0: Active, 1: Completed, 2: Expired, 3: Withdrawn)
-*   **Global State:** Keep track of a global counter for `Next Goal ID` (if not using random/sequential client-side IDs) and total protocol TVL.
+### B. Silent Custodial Wallet (Social/Web2 Logic)
+*   **Target User:** Newcomers who don't want to manage mnemonics or deal with wallet popups for every action.
+*   **Recommended Tool:** **Magic Link** (via `@magic-ext/algorand`) or **Web3Auth**.
+*   **UX Flow:** 
+    1. User logs in via Email or Social (Google).
+    2. A secure, non-custodial wallet is created in the background (MPC/TEE).
+    3. The application can sign "low-risk" transactions (like deposits) with minimal friction, providing a "silent" experience.
+*   **Implementation Note:** Magic Link treats the user's email as an identifier and derives an Algorand address. The app interacts with it via a custom signer that conforms to the `algosdk` signing interface.
 
-### Account Model
-*   Funds will be locked in the **Smart Contract Application Account** (escrow).
-*   The application account must be funded with the Minimum Balance Requirement (MBR) for every new box created (MBR = 2500 microAlgos + 400 microAlgos per byte of the box). It is best practice to have the user pay this MBR during the `create_goal` method.
+## 4. USDC Implementation (Testnet)
+To avoid volatility, the project will use **Circle USDC** on the Algorand Testnet.
 
-### ABI Methods (Smart Contract Interface)
-*   `create_goal(target_amount: uint64, deadline: uint64, mbr_payment: pay) -> uint64`
-    *   Verifies the `mbr_payment` covers the box cost.
-    *   Allocates a new box with the initial goal data.
-*   `deposit(goal_id: uint64, payment: pay) -> void`
-    *   Requires a `pay` transaction to the Application Account.
-    *   Reads the box, adds the payment amount to `Current Balance`, and writes back to the box.
-*   `withdraw(goal_id: uint64) -> void`
-    *   Reads the box. Fails if `Current Balance < Target Amount` AND `Current time < Deadline`.
-    *   Uses an `InnerTxn` (Type: `pay`) to send the `Current Balance` back to the user.
-    *   Marks status as `Completed` or `Withdrawn` and potentially deletes the box to refund the MBR to the user.
+*   **Asset ID (Testnet):** `10458941`
+*   **Decimals:** 6 (1 USDC = 1,000,000 units).
+*   **Requirement: Opt-in:**
+    *   Every user account (Wallet or Silent) must **Opt-in** to USDC before they can receive or hold it.
+    *   The Smart Contract (Application Account) must also be opted-in to the USDC asset.
 
-## 5. UI/UX & Design System Research
-To ensure the app looks premium and creates a "wow" factor, use a "Dynamic Glassmorphism" aesthetic that invokes a feeling of modern FinTech and Web3 security. Avoid generic flat designs.
+### Simplified Transaction Flow
+To ensure a premium UX, the user should never have to manually select an asset or search for USDC.
+1.  **Pre-selected Asset:** The UI will strictly display USDC balances. The "Deposit" button will automatically construct an `AssetTransferTxn` with X-Asset-ID set to `10458941`.
+2.  **Automated Opt-in:** If the app detects the user has not opted into USDC, the "Deposit" flow should first prompt/perform a one-time Opt-in transaction.
+3.  **Transaction Logic:**
+    *   **Deposit:** User sends X amount of USDC to the Smart Contract.
+    *   **Withdrawal:** Smart Contract sends USDC back to the user via an `Inner Transaction` (type: `axfer`).
 
-### Color Combinations
-**Light Mode (Clean, Trustworthy, Pastel Highlights):**
-*   **Background:** `#F9FAFB` (Off-white / Cool Gray) with subtle, blurred pastel gradient orbs in the background (cyan and light purple).
-*   **Card Background:** `rgba(255, 255, 255, 0.7)` with `backdrop-filter: blur(12px)` (Glass effect).
-*   **Primary Accent:** `#2E28D4` (Algorand Purple) or sleek black for buttons.
-*   **Secondary/Success:** `#10B981` (Emerald Green for savings progress).
-*   **Text Primary:** `#111827` (Gray 900).
+## 5. Algorand Technical Architecture (Updated)
+The application will use **AlgoKit** and **Puya (Algorand Python)**.
 
-**Dark Mode (Premium, Vibrant, "Wow" Factor - Highly Recommended):**
-*   **Background:** `#0B0F19` (Deep Navy / Almost Black) with a smooth, dark radial gradient.
-*   **Card Background:** `rgba(31, 41, 55, 0.4)` with a `1px solid rgba(255, 255, 255, 0.1)` border and heavy background-blur.
-*   **Primary Accent:** `#00E4FF` (Algorand Vibrant Cyan) to make buttons and active elements glow.
-*   **Secondary Accent (Gradients):** `#B829FF` (Neon Purple) used in progress bars via `linear-gradient(90deg, #00E4FF, #B829FF)`.
-*   **Secondary/Success:** `#34D399` (Soft Neon Green).
-*   **Text Primary:** `#F9FAFB` (White) and `#9CA3AF` (Gray for subtext).
+### State Management (Box Storage)
+*   **Box Key:** `/Address (32 bytes)/ + /Goal ID (8 bytes)/`
+*   **Box Value Structure:**
+    *   `Target Amount` (uint64 - in USDC units)
+    *   `Current Balance` (uint64 - in USDC units)
+    *   `Deadline` (uint64 - UNIX timestamp)
+    *   `Status` (uint8)
 
-### Typography
-*   Use modern sans-serif fonts like **Inter**, **Outfit**, or **Plus Jakarta Sans**. They provide excellent readability for numbers and balances while maintaining a geometric, tech-forward feel.
+### Smart Contract Methods (Refined)
+*   **`create_goal`**: Same as before, but initialized with a target in USDC.
+*   **`deposit(goal_id: uint64, axfer: asset_transfer)`**:
+    *   Verify `axfer.asset_receiver == Global.current_application_address`.
+    *   Verify `axfer.xfer_asset == 10458941`.
+    *   Update box state with `axfer.asset_amount`.
+*   **`withdraw(goal_id: uint64)`**:
+    *   Verify conditions (deadline/target).
+    *   Execute `itxn.AssetTransfer` with `xfer_asset: 10458941` and `asset_amount` from the box balance.
 
-### Dynamic Design Principles (Micro-animations)
-1.  **Progress Rings & Bars:** When the dashboard loads, the savings progress should gracefully animate from 0% to the current percentage.
-2.  **Hover States:** Cards representing individual goals should slightly scale up (`transform: translateY(-4px) scale(1.01)`) and increase their drop-shadow glow on hover, making the interface organic and interactive.
-3.  **Milestone Celebrations:** Implement a lightweight confetti animation or a satisfying glowing checkmark bounce when a goal reaches 100%.
-4.  **Number Counters:** The "Total Saved" or ALGO balances should linearly cycle/count up to the final value upon page load rather than appearing statically.
+## 6. UI/UX & Design System
+Use a **"Dark Mode Neon"** aesthetic with high-contrast USDC indicators.
+
+### Visual Cues for USDC
+*   Use the official USDC Blue (`#2775CA`) for accents related to money.
+*   Display balances as `$XX.XX` instead of raw units to maintain a familiar FinTech feel.
+
+### Dynamic Design Principles
+1.  **Wallet Selection Overlay:** A premium, blurred modal with two clear choices: "Connect Pera" vs "Continue with Email (Silent)".
+2.  **Zero-Configuration Deposits:** When a user clicks "Deposit" on a goal, the asset is already locked to USDC. Clicking confirm triggers the wallet signature immediately.
+3.  **Smooth Opt-in Onboarding:** If a user needs to opt-in, use a progress stepper: `Opting in to USDC...` -> `Confirming transaction...` -> `Success`.
+
+## 7. Next Steps & Research
+*   [ ] Set up `@txnlab/use-wallet` with Pera and Magic Link providers.
+*   [ ] Write the USDC-specific Puya contract.
+*   [ ] Create a utility for automatic Testnet USDC funding (Faucet link discovery).
+*   [ ] Prototype the "Silent" login flow to ensure it doesn't break the user flow with unnecessary popups.
