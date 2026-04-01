@@ -54,7 +54,7 @@ const Field = ({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-10 py-3 text-sm text-white placeholder-gray-400 outline-none transition-all duration-200 focus:border-neon-lime/50 focus:bg-white/[0.07] focus:ring-1 focus:ring-neon-lime/20 backdrop-blur-sm"
+        className="w-full rounded-xl border border-white/10 bg-[#1A241F] px-10 py-3 text-sm text-white placeholder-gray-400 outline-none transition-all duration-200 focus:border-neon-lime/50 focus:bg-[#1F2B25] focus:ring-1 focus:ring-neon-lime/20 backdrop-blur-sm"
       />
       {toggle && (
         <button
@@ -103,7 +103,13 @@ export default function AuthPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    setTimeout(() => navigate('/'), 2200);
+    setTimeout(() => {
+      if (mode === 'signup') {
+        navigate('/onboarding');
+      } else {
+        navigate('/dashboard');
+      }
+    }, 2200);
   };
 
   const formVariants = {
@@ -140,7 +146,7 @@ export default function AuthPage() {
       {/* Glass card */}
       <div
         ref={cardRef}
-        className="relative z-10 w-full max-w-md mx-4 rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-xl shadow-2xl overflow-hidden"
+        className="relative z-10 w-full max-w-md mx-4 rounded-3xl border border-white/10 bg-[#141C18] backdrop-blur-xl shadow-2xl overflow-hidden"
         style={{ boxShadow: '0 0 80px rgba(192,255,0,0.05), 0 25px 60px rgba(0,0,0,0.5)' }}
       >
         {/* Top neon accent line */}
@@ -148,7 +154,7 @@ export default function AuthPage() {
 
         <div className="px-8 py-10">
           {/* Toggle buttons */}
-          <div className="flex rounded-xl border border-white/10 bg-white/[0.03] p-1 mb-8">
+          <div className="flex rounded-xl border border-white/10 bg-[#1A241F] p-1 mb-8">
             {(['signup', 'signin'] as Mode[]).map((m) => (
               <button
                 key={m}
@@ -325,7 +331,7 @@ export default function AuthPage() {
 
                   <button
                     type="button"
-                    className="flex items-center justify-center gap-2 w-full rounded-xl border border-white/10 bg-white/[0.03] py-3 text-sm text-white hover:border-neon-lime/40 hover:bg-white/[0.06] transition-all duration-200"
+                    className="flex items-center justify-center gap-2 w-full rounded-xl border border-white/10 bg-[#1A241F] py-3 text-sm text-white hover:border-neon-lime/40 hover:bg-[#232F28] transition-all duration-200"
                   >
                     <Wallet size={15} className="text-neon-lime" />
                     Connect Pera Wallet
