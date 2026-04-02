@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/dashboard/DashboardLayout';
 import StatsGrid from '../../components/dashboard/StatsGrid';
 import SavingsEvolution from '../../components/dashboard/SavingsEvolution';
@@ -8,7 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SparkEffect } from '../../components/ui/spark-effect';
 import StatusToast from '../../components/dashboard/StatusToast';
 import type { ToastType } from '../../components/dashboard/StatusToast';
-import { ShieldCheck, Zap, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Zap, AlertCircle, Loader2, Target } from 'lucide-react';
+import { api } from '../../lib/api';
 
 interface Toast {
   id: string;
@@ -18,8 +20,15 @@ interface Toast {
 }
 
 const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [isAdminMode, setIsAdminMode] = useState(false); // Simulated "First Login" toggle
   const [toasts, setToasts] = useState<Toast[]>([]);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [userData, setUserData] = useState<any>(null);
+  const [goals, setGoals] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const userId = localStorage.getItem('ps_user_id');
 
   const addToast = (type: ToastType, message: string, description?: string) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -30,16 +39,67 @@ const DashboardPage: React.FC = () => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  useEffect(() => {
+    if (!userId) {
+      navigate('/auth');
+      return;
+    }
+
+    let isMounted = true;
+    const initializeData = async () => {
+      try {
+        setIsLoading(true);
+        // Fetch user data
+        const user = await api.fetchUser(userId);
+        if (!isMounted) return;
+        setUserData(user);
+        
+        // Fetch specific data
+        const fetchedGoals = await api.fetchGoals(userId);
+        const mappedGoals = fetchedGoals.map((g: any) => ({
+          id: g.id,
+          name: g.title,
+          target: Number(g.targetAmount) / 1000000, 
+          saved: Number(g.currentBalance) / 1000000,
+          color: g.colorHex || '#C0FF00',
+          icon: Target,
+          createdAt: new Date(g.createdAt).toLocaleDateString(),
+          deadline: new Date(g.deadline).toLocaleDateString(),
+          frequency: 'Flexible',
+          lastDeposit: 'Recent',
+          status: g.status.toLowerCase(),
+          yieldEarned: 0,
+        }));
+
+        const fetchedActivities = await api.fetchActivity(userId);
+        const mappedActivities = fetchedActivities.map((a: any) => ({
+          id: a.id,
+          type: a.type === 'GOAL_CREATED' ? 'goal_creation' : a.type.toLowerCase(),
+          name: a.type === 'DEPOSIT' ? 'Vault Fast-Track' : a.type === 'WITHDRAWAL' ? 'Goal Reached' : 'Initialized Vault',
+          amount: a.amount ? Number(a.amount) / 1000000 : 0,
+          date: new Date(a.timestamp).toLocaleDateString(),
+          status: 'completed',
+          goal: fetchedGoals.find((g: any) => g.onChainGoalId === a.onChainGoalId)?.title || 'Vault',
+        }));
+        
+        if (isMounted) {
+          setGoals(mappedGoals);
+          setActivities(mappedActivities);
+        }
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+        addToast('error', 'Connection Error', 'Failed to sync with backend.');
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    initializeData();
+    return () => { isMounted = false; }
+  }, [userId, navigate]);
+
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        staggerChildren: 0.1,
-      },
-    },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, staggerChildren: 0.1 } },
   };
 
   const itemVariants = {
@@ -47,7 +107,10 @@ const DashboardPage: React.FC = () => {
     visible: { opacity: 1, y: 0 },
   };
 
-  const isEmpty = !isAdminMode;
+  const isEmpty = isAdminMode || (!isLoading && goals.length === 0);
+
+  const totalSaved = goals.reduce((acc, g) => acc + g.saved, 0);
+  const activeGoalsCount = goals.filter(g => g.status === 'active').length;
 
   return (
     <DashboardLayout>
@@ -58,75 +121,78 @@ const DashboardPage: React.FC = () => {
         <div className="fixed top-24 right-8 z-[200] flex flex-col gap-4">
           <AnimatePresence>
             {toasts.map((toast) => (
-              <StatusToast
+               <StatusToast
                 key={toast.id}
                 {...toast}
-                onClose={removeToast}
-              />
+                 onClose={removeToast}
+               />
             ))}
           </AnimatePresence>
         </div>
 
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={containerVariants}
-          className="relative z-10 space-y-8 pb-12"
-        >
-          {/* Welcome Section */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-            <motion.div variants={itemVariants} className="flex flex-col gap-1">
-              <h1 className="text-4xl font-black tracking-tight text-white italic uppercase">
-                Hello, <span className="text-[#C0FF00] not-italic">Satoshi</span>
-              </h1>
-              <p className="text-sm text-gray-400 font-medium tracking-tight">Your PennyStalker vault strategy is operational.</p>
-            </motion.div>
-
-            {/* Test Simulation Controls */}
-            <motion.div variants={itemVariants} className="flex items-center gap-3">
-              <button
-                onClick={() => setIsAdminMode(!isAdminMode)}
-                className={`px-4 py-2 rounded-xl text-[0.65rem] font-black uppercase tracking-widest border transition-all ${isAdminMode ? 'bg-[#C0FF00]/10 border-[#C0FF00] text-[#C0FF00]' : 'bg-white/5 border-white/10 text-gray-500'
-                  }`}
-              >
-                {isAdminMode ? 'Show Real Data' : 'Simulate New User'}
-              </button>
-              <button
-                onClick={() => addToast('error', 'Reverted: Insufficient USDC', 'Asset transfer denied by smart contract logic.')}
-                className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-all"
-                title="Simulate Error"
-              >
-                <AlertCircle size={18} />
-              </button>
-            </motion.div>
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-4">
+             <Loader2 className="animate-spin text-[#00F0FF]" size={48} />
+             <p className="text-sm font-black text-white italic uppercase tracking-widest">Syncing with Backend Vaults...</p>
           </div>
+        ) : (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+            className="relative z-10 space-y-8 pb-12"
+          >
+            {/* Welcome Section */}
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+              <motion.div variants={itemVariants} className="flex flex-col gap-1">
+                <h1 className="text-4xl font-black tracking-tight text-white italic uppercase">
+                  Hello, <span className="text-[#C0FF00] not-italic">{userData?.displayName || 'Satoshi'}</span>
+                </h1>
+                <p className="text-sm text-gray-400 font-medium tracking-tight">Your PennyStalker vault strategy is loaded securely.</p>
+              </motion.div>
 
-          {/* Stats Grid */}
-          <motion.div variants={itemVariants}>
-            <StatsGrid isEmpty={isEmpty} />
-          </motion.div>
+              {/* Test Simulation Controls */}
+              <motion.div variants={itemVariants} className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsAdminMode(!isAdminMode)}
+                  className={`px-4 py-2 rounded-xl text-[0.65rem] font-black uppercase tracking-widest border transition-all ${isAdminMode ? 'bg-[#C0FF00]/10 border-[#C0FF00] text-[#C0FF00]' : 'bg-white/5 border-white/10 text-gray-500'}`}
+                >
+                  {isAdminMode ? 'Show Real Data' : 'Simulate Empty State'}
+                </button>
+              </motion.div>
+            </div>
 
-          {/* Main Content Area */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-            {/* Chart Section */}
-            <motion.div variants={itemVariants} className="xl:col-span-8">
-              <SavingsEvolution isEmpty={isEmpty} />
+            {/* Stats Grid */}
+            <motion.div variants={itemVariants}>
+              <StatsGrid 
+                isEmpty={isEmpty} 
+                totalSaved={totalSaved}
+                activeGoals={activeGoalsCount}
+              />
             </motion.div>
 
-            {/* Activity Section */}
-            <motion.div variants={itemVariants} className="xl:col-span-4">
-              <RecentActivity activities={isEmpty ? [] : undefined} />
-            </motion.div>
-          </div>
+            {/* Main Content Area */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+              {/* Chart Section */}
+              <motion.div variants={itemVariants} className="xl:col-span-8">
+                <SavingsEvolution isEmpty={isEmpty} activities={isEmpty ? [] : activities} />
+              </motion.div>
 
-          {/* Goals Section */}
-          <motion.div variants={itemVariants}>
-            <GoalsOverview goals={isEmpty ? [] : undefined} />
+              {/* Activity Section */}
+              <motion.div variants={itemVariants} className="xl:col-span-4">
+                <RecentActivity activities={isEmpty ? [] : activities} />
+              </motion.div>
+            </div>
+
+            {/* Goals Section */}
+            <motion.div variants={itemVariants}>
+              <GoalsOverview goals={isEmpty ? [] : goals} />
+            </motion.div>
           </motion.div>
-        </motion.div>
+        )}
 
         {/* Informational Banner for New Users */}
-        {isEmpty && (
+        {!isLoading && isEmpty && (
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
@@ -153,6 +219,6 @@ const DashboardPage: React.FC = () => {
       </div>
     </DashboardLayout>
   );
-}
+};
 
 export default DashboardPage;

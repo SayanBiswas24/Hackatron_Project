@@ -1,37 +1,113 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useWallet, WalletId } from '@txnlab/use-wallet-react';
 import {
   Wallet,
-  Mail,
   ShieldCheck,
   Zap,
   CheckCircle2,
   ArrowRight,
-  ShieldAlert,
   Loader2,
   Lock,
-  Globe
+  Globe,
+  Copy,
+  ArrowLeft,
+  Key
 } from 'lucide-react';
-import { Banner } from '../components/ui/banner';
 import { FlippingCard } from '../components/ui/flipping-card';
-import { cn } from '../lib/utils';
+import { api } from '../lib/api';
 
-type OnboardingStep = 'wallet-selection' | 'usdc-optin' | 'success';
+type OnboardingStep = 
+  | 'selection' 
+  | 'custodial-choice' 
+  | 'custodial-create' 
+  | 'custodial-import' 
+  | 'pera-status' 
+  | 'success';
 
 const OnboardingPage: React.FC = () => {
-  const [step] = useState<OnboardingStep>('wallet-selection');
-  const [selectedWallet, setSelectedWallet] = useState<'pera' | 'custodial' | null>(null);
-  const [optInStatus] = useState<'idle' | 'scanning' | 'requesting' | 'confirmed'>('idle');
+  const [step, setStep] = useState<OnboardingStep>('selection');
+  const [mnemonic, setMnemonic] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
+  const [hasConfirmedMnemonic, setHasConfirmedMnemonic] = useState(false);
+  const [importMnemonic, setImportMnemonic] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { wallets } = useWallet();
   const navigate = useNavigate();
+  const userId = localStorage.getItem('ps_user_id');
 
-  const handleWalletSelect = (type: 'pera' | 'custodial') => {
-    setSelectedWallet(type);
-    // Auto-scroll or signal that selection is made
+  useEffect(() => {
+    if (!userId) {
+      navigate('/auth');
+    }
+  }, [userId, navigate]);
+
+  const handlePeraConnect = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const peraWallet = wallets.find(w => w.id === WalletId.PERA);
+      if (!peraWallet) throw new Error("Pera Wallet provider not found");
+      
+      const accounts = await peraWallet.connect();
+      if (accounts.length > 0) {
+        const address = accounts[0].address;
+        await api.setupWallet({
+          userId: userId!,
+          type: 'PERA',
+          walletAddress: address
+        });
+        setStep('success');
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to connect Pera Wallet");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const startOnboarding = () => {
-    navigate('/dashboard');
+  const handleCustodialCreate = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const res = await api.setupWallet({
+        userId: userId!,
+        type: 'CUSTODIAL'
+      });
+      setMnemonic(res.mnemonic);
+      setStep('custodial-create');
+    } catch (err: any) {
+      setError(err.message || "Failed to create vault");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCustodialImport = async () => {
+    if (!importMnemonic.trim()) return;
+    setError(null);
+    setIsLoading(true);
+    try {
+      await api.setupWallet({
+        userId: userId!,
+        type: 'CUSTODIAL',
+        mnemonic: importMnemonic.trim()
+      });
+      setStep('success');
+    } catch (err: any) {
+      setError(err.message || "Failed to import vault. Ensure mnemonic is valid.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(mnemonic);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
 
   const containerVariants = {
@@ -47,10 +123,10 @@ const OnboardingPage: React.FC = () => {
       </div>
       <div className="space-y-3">
         <h3 className="text-4xl font-black uppercase italic tracking-tighter text-white">Pera Wallet</h3>
-        <p className="text-[#C0FF00] text-[0.7rem] font-black uppercase tracking-[0.3em] bg-[#C0FF00]/5 py-1 px-3 rounded-full inline-block">Pro-Grade Control</p>
+        <p className="text-[#C0FF00] text-[0.7rem] font-black uppercase tracking-[0.3em] bg-[#C0FF00]/5 py-1 px-3 rounded-full inline-block">External Control</p>
       </div>
       <p className="text-gray-500 text-sm font-medium max-w-[280px]">
-        The gold standard for Algorand self-custody. Complete transparency and ownership.
+        Connect your existing Pera Wallet. You maintain full control over your keys.
       </p>
     </div>
   );
@@ -58,13 +134,13 @@ const OnboardingPage: React.FC = () => {
   const peraBack = (
     <div className="flex flex-col h-full items-center justify-between py-6">
       <div className="space-y-8 w-full">
-        <h4 className="text-2xl font-black uppercase italic text-[#C0FF00] tracking-tight">Full Authority</h4>
+        <h4 className="text-2xl font-black uppercase italic text-[#C0FF00] tracking-tight">Self-Custody</h4>
         <ul className="space-y-5 text-left px-4">
           {[
-            { text: "Full ownership of private keys", icon: <ShieldCheck size={16} /> },
-            { text: "Ledger Hardware wallet support", icon: <Lock size={16} /> },
-            { text: "Direct blockchain interaction", icon: <Globe size={16} /> },
-            { text: "Manual signature Required", icon: <CheckCircle2 size={16} /> }
+            { text: "Use your own Pera account", icon: <ShieldCheck size={16} /> },
+            { text: "Transactions signed in-app", icon: <Lock size={16} /> },
+            { text: "Full blockchain transparency", icon: <Globe size={16} /> },
+            { text: "No platform key storage", icon: <CheckCircle2 size={16} /> }
           ].map((item, i) => (
             <li key={i} className="flex items-center gap-4 text-sm font-bold text-gray-300 uppercase tracking-tight">
               <div className="text-[#C0FF00] p-1.5 bg-[#C0FF00]/10 rounded-lg">{item.icon}</div>
@@ -74,16 +150,11 @@ const OnboardingPage: React.FC = () => {
         </ul>
       </div>
       <button
-        onClick={(e) => { e.stopPropagation(); handleWalletSelect('pera'); }}
-        className={cn(
-          "w-full py-5 rounded-[1.5rem] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2",
-          selectedWallet === 'pera'
-            ? "bg-white text-black shadow-[0_0_30px_rgba(255,255,255,0.2)]"
-            : "bg-[#C0FF00] text-black hover:scale-[1.02] shadow-[0_0_40px_rgba(192,255,0,0.2)]"
-        )}
+        onClick={(e) => { e.stopPropagation(); handlePeraConnect(); }}
+        disabled={isLoading}
+        className="w-full py-5 rounded-[1.5rem] font-black uppercase tracking-widest bg-[#C0FF00] text-black hover:scale-[1.02] shadow-[0_0_40px_rgba(192,255,0,0.2)] disabled:opacity-50 flex items-center justify-center gap-2"
       >
-        {selectedWallet === 'pera' ? "Selected" : "Select Pera"}
-        {selectedWallet === 'pera' && <CheckCircle2 size={20} strokeWidth={3} />}
+        {isLoading ? <Loader2 size={20} className="animate-spin" /> : "Connect Pera"}
       </button>
     </div>
   );
@@ -95,10 +166,10 @@ const OnboardingPage: React.FC = () => {
       </div>
       <div className="space-y-3">
         <h3 className="text-4xl font-black uppercase italic tracking-tighter text-white">Silent Vault</h3>
-        <p className="text-[#00F0FF] text-[0.7rem] font-black uppercase tracking-[0.3em] bg-[#00F0FF]/5 py-1 px-3 rounded-full inline-block">Email-Managed</p>
+        <p className="text-[#00F0FF] text-[0.7rem] font-black uppercase tracking-[0.3em] bg-[#00F0FF]/5 py-1 px-3 rounded-full inline-block">Managed Security</p>
       </div>
       <p className="text-gray-500 text-sm font-medium max-w-[280px]">
-        Seamless, bank-like experience. No keys to manage, just pure savings power.
+        Seamless, native experience. We manage the security while you focus on saving.
       </p>
     </div>
   );
@@ -106,13 +177,13 @@ const OnboardingPage: React.FC = () => {
   const custodialBack = (
     <div className="flex flex-col h-full items-center justify-between py-6">
       <div className="space-y-8 w-full">
-        <h4 className="text-2xl font-black uppercase italic text-[#00F0FF] tracking-tight">Frictionless Entry</h4>
+        <h4 className="text-2xl font-black uppercase italic text-[#00F0FF] tracking-tight">Native Vault</h4>
         <ul className="space-y-5 text-left px-4">
           {[
-            { text: "Instant Email / Social Login", icon: <Mail size={16} /> },
-            { text: "No seed phrases to manage", icon: <ShieldCheck size={16} /> },
-            { text: "Auto-signs recurring deposits", icon: <Zap size={16} /> },
-            { text: "Zero-friction onboarding", icon: <CheckCircle2 size={16} /> }
+            { text: "One-click vault creation", icon: <Zap size={16} /> },
+            { text: "Import existing vault keys", icon: <Key size={16} /> },
+            { text: "AES-256 cloud encryption", icon: <ShieldCheck size={16} /> },
+            { text: "Auto-signed transactions", icon: <CheckCircle2 size={16} /> }
           ].map((item, i) => (
             <li key={i} className="flex items-center gap-4 text-sm font-bold text-gray-300 uppercase tracking-tight">
               <div className="text-[#00F0FF] p-1.5 bg-[#00F0FF]/10 rounded-lg">{item.icon}</div>
@@ -122,149 +193,210 @@ const OnboardingPage: React.FC = () => {
         </ul>
       </div>
       <button
-        onClick={(e) => { e.stopPropagation(); handleWalletSelect('custodial'); }}
-        className={cn(
-          "w-full py-5 rounded-[1.5rem] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2",
-          selectedWallet === 'custodial'
-            ? "bg-white text-black shadow-[0_0_30px_rgba(255,255,255,0.2)]"
-            : "bg-[#00F0FF] text-black hover:scale-[1.02] shadow-[0_0_40px_rgba(0,240,255,0.2)]"
-        )}
+        onClick={(e) => { e.stopPropagation(); setStep('custodial-choice'); }}
+        className="w-full py-5 rounded-[1.5rem] font-black uppercase tracking-widest bg-[#00F0FF] text-black hover:scale-[1.02] shadow-[0_0_40px_rgba(0,240,255,0.2)]"
       >
-        {selectedWallet === 'custodial' ? "Selected" : "Select Vault"}
-        {selectedWallet === 'custodial' && <CheckCircle2 size={20} strokeWidth={3} />}
+        Configure Vault
       </button>
     </div>
   );
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#0A0F0D]">
-
+      {/* Background Glow */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#C0FF00]/5 blur-[120px] rounded-full" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#00F0FF]/5 blur-[120px] rounded-full" />
 
       <div className="relative z-10 w-full max-w-6xl px-6 py-20">
         <AnimatePresence mode="wait">
-          {step === 'wallet-selection' && (
+          {step === 'selection' && (
             <motion.div
-              key="wallet"
+              key="selection"
               variants={containerVariants}
               initial="initial"
               animate="animate"
               exit="exit"
               className="space-y-12"
             >
-              <Banner
-                id="onboarding-banner"
-                variant="rainbow"
-                className="w-full max-w-7xl mx-auto rounded-[2.5rem] py-3 px-6 md:py-4 md:px-10 shadow-[0_0_60px_rgba(192,255,0,0.1)] border border-white/5"
-              >
-                <div className="text-center space-y-1">
-                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white uppercase whitespace-nowrap" style={{ letterSpacing: '0.3em' }}>
-                    Choose Your <span className="text-[#C0FF00]">Vault Gate</span>
-                  </h1>
-                  <p className="text-gray-400 font-medium text-sm md:text-base tracking-tight max-w-3xl mx-auto">
-                    Select your interaction layer. This determines how your transactions are signed and secured.
-                  </p>
-                </div>
-              </Banner>
-
-              <div className="bg-[#141C18]/60 backdrop-blur-md border border-white/5 rounded-[3rem] p-8 md:p-12 shadow-2xl max-w-5xl mx-auto mt-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 justify-items-center">
-                  <FlippingCard
-                    frontContent={peraFront}
-                    backContent={peraBack}
-                    className={selectedWallet === 'pera' ? "border-[#C0FF00]/50" : ""}
-                  />
-
-                  <FlippingCard
-                    frontContent={custodialFront}
-                    backContent={custodialBack}
-                    className={selectedWallet === 'custodial' ? "border-[#00F0FF]/50" : ""}
-                  />
-                </div>
-              </div>
-
-              {/* Progress CTA */}
-              <div className="flex flex-col items-center gap-6 pt-6">
-                <button
-                  type="button"
-                  onClick={startOnboarding}
-                  className="w-full md:w-72 py-4 rounded-2xl text-base font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-3 bg-[#C0FF00] text-black hover:brightness-110 active:scale-95 shadow-[0_0_40px_rgba(192,255,0,0.2)]"
-                >
-                  Confirm your choice <ArrowRight size={20} strokeWidth={3} />
-                </button>
-
-                <p className="text-[0.6rem] font-black uppercase tracking-[0.4em] text-gray-700">
-                  Secured by Algorand Native Cryptography
+              <div className="text-center space-y-4">
+                <h1 className="text-5xl md:text-7xl font-black text-white uppercase italic tracking-tighter" style={{ letterSpacing: '-0.02em' }}>
+                  Secure Your <span className="text-[#C0FF00]">Vault</span>
+                </h1>
+                <p className="text-gray-400 font-medium text-lg max-w-2xl mx-auto">
+                  How would you like to sign your growth? Choose between full self-custody or our seamless managed vault.
                 </p>
               </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 justify-items-center mt-12">
+                <FlippingCard
+                  frontContent={peraFront}
+                  backContent={peraBack}
+                />
+                <FlippingCard
+                  frontContent={custodialFront}
+                  backContent={custodialBack}
+                />
+              </div>
+
+              {error && (
+                <div className="max-w-md mx-auto p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-bold text-center">
+                  {error}
+                </div>
+              )}
             </motion.div>
           )}
 
-          {/* ... keeping existing steps ... */}
-          {step === 'usdc-optin' && (
+          {step === 'custodial-choice' && (
             <motion.div
-              key="optin"
+              key="custodial-choice"
               variants={containerVariants}
               initial="initial"
               animate="animate"
               exit="exit"
-              className="bg-[#141C18] border border-white/10 rounded-[2.5rem] p-12 text-center space-y-8 shadow-2xl relative overflow-hidden max-w-2xl mx-auto"
+              className="max-w-xl mx-auto space-y-8"
             >
-              {/* Background Glow */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-[#C0FF00]/5 blur-[100px] rounded-full" />
+              <button 
+                onClick={() => setStep('selection')}
+                className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors uppercase font-bold text-xs tracking-widest"
+              >
+                <ArrowLeft size={14} /> Back to selection
+              </button>
+              
+              <div className="text-center space-y-4">
+                <h2 className="text-4xl font-black text-white uppercase italic tracking-tight">Silent Vault <span className="text-[#00F0FF] not-italic">Setup</span></h2>
+                <p className="text-gray-400">Generate a new secure vault or import your existing one.</p>
+              </div>
 
-              <div className="relative space-y-4">
-                <div className="flex justify-center flex-col items-center">
-                  <div className="relative w-24 h-24 mb-6">
-                    {optInStatus !== 'confirmed' && (
-                      <div className="absolute inset-0 border-4 border-[#C0FF00]/20 rounded-full animate-ping" />
-                    )}
-                    <div className={cn(
-                      "absolute inset-0 rounded-full border-4 flex items-center justify-center transition-all duration-500",
-                      optInStatus === 'confirmed' ? "border-[#C0FF00] bg-[#C0FF00]/10" : "border-white/10"
-                    )}>
-                      {optInStatus === 'confirmed' ? (
-                        <CheckCircle2 className="text-[#C0FF00]" size={40} strokeWidth={3} />
-                      ) : (
-                        <ShieldAlert className="text-gray-500" size={40} />
-                      )}
+              <div className="grid grid-cols-1 gap-6">
+                <button
+                  onClick={handleCustodialCreate}
+                  disabled={isLoading}
+                  className="group relative overflow-hidden p-8 rounded-3xl bg-[#141C18] border border-white/5 hover:border-[#00F0FF]/30 transition-all text-left"
+                >
+                  <div className="relative z-10 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-black text-white uppercase italic">Create New Vault</h3>
+                      <p className="text-gray-500 text-sm mt-1">We'll generate a secure Algorand account for you.</p>
                     </div>
+                    {isLoading ? <Loader2 size={24} className="animate-spin text-[#00F0FF]" /> : <Zap size={24} className="text-[#00F0FF] group-hover:scale-110 transition-transform" />}
                   </div>
-                  <h2 className="text-3xl font-black text-white uppercase italic tracking-tight">Initializing <span className="text-[#C0FF00] not-italic">USDC</span> Vault</h2>
-                  <p className="text-sm text-gray-500 font-medium max-w-sm mx-auto mt-2">
-                    We need to authorize your wallet to hold and trade USDC for your goal-based savings.
-                  </p>
+                </button>
+
+                <button
+                  onClick={() => setStep('custodial-import')}
+                  className="group relative overflow-hidden p-8 rounded-3xl bg-[#141C18] border border-white/5 hover:border-[#00F0FF]/30 transition-all text-left"
+                >
+                  <div className="relative z-10 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-black text-white uppercase italic">Import Existing</h3>
+                      <p className="text-gray-500 text-sm mt-1">Use your existing 25-word mnemonic phrase.</p>
+                    </div>
+                    <Key size={24} className="text-[#00F0FF] group-hover:scale-110 transition-transform" />
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 'custodial-create' && (
+            <motion.div
+              key="custodial-create"
+              variants={containerVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="max-w-2xl mx-auto space-y-8 bg-[#141C18] border border-white/10 rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-[#00F0FF]/5 blur-[100px] rounded-full" />
+              
+              <div className="text-center space-y-6 relative">
+                <div className="flex justify-center">
+                  <div className="p-4 rounded-2xl bg-[#00F0FF]/10 text-[#00F0FF]">
+                    <ShieldCheck size={48} />
+                  </div>
+                </div>
+                <h2 className="text-3xl font-black text-white uppercase italic">Secure Your <span className="text-[#00F0FF] not-italic">Keys</span></h2>
+                <p className="text-gray-400 text-sm max-w-sm mx-auto font-medium">
+                  This 25-word phrase is the ONLY way to recover your vault. Write it down and keep it somewhere safe. <span className="text-red-400 font-bold">Never share this.</span>
+                </p>
+
+                <div className="relative p-6 rounded-2xl bg-black/40 border border-white/5 font-mono text-sm leading-relaxed text-[#00F0FF] group">
+                  {mnemonic}
+                  <button 
+                    onClick={copyToClipboard}
+                    className="absolute top-3 right-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                  >
+                    {isCopied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                  </button>
                 </div>
 
-                {/* Status Steps */}
-                <div className="pt-8 space-y-4 max-w-xs mx-auto text-left">
-                  {[
-                    { id: 'scanning', label: 'Probing Testnet Node...' },
-                    { id: 'requesting', label: 'Accepting Asset ID 10458941...' },
-                    { id: 'confirmed', label: 'Vault Ready for Deposits' }
-                  ].map((item, idx) => {
-                    const isActive = optInStatus === item.id;
-                    const isPast = (optInStatus === 'requesting' && idx === 0) || (optInStatus === 'confirmed' && idx < 2);
-
-                    return (
-                      <div key={item.id} className="flex items-center gap-4">
-                        <div className={cn(
-                          "w-5 h-5 rounded-full border flex items-center justify-center transition-all",
-                          isActive ? "border-[#C0FF00] shadow-[0_0_15px_rgba(192,255,0,0.3)] bg-[#C0FF00]/20" :
-                            isPast ? "border-[#C0FF00] bg-[#C0FF00]" : "border-white/10"
-                        )}>
-                          {isPast && <CheckCircle2 className="text-black" size={10} strokeWidth={4} />}
-                          {isActive && <Loader2 className="text-[#C0FF00] animate-spin" size={10} strokeWidth={4} />}
-                        </div>
-                        <span className={cn(
-                          "text-[0.65rem] font-bold uppercase tracking-widest transition-all",
-                          isActive ? "text-white" : isPast ? "text-gray-400" : "text-gray-600"
-                        )}>
-                          {item.label}
-                        </span>
-                      </div>
-                    );
-                  })}
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-[#00F0FF]/5 border border-[#00F0FF]/10 text-left">
+                  <input 
+                    type="checkbox" 
+                    id="confirm-mnemonic" 
+                    checked={hasConfirmedMnemonic}
+                    onChange={(e) => setHasConfirmedMnemonic(e.target.checked)}
+                    className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-[#00F0FF] focus:ring-[#00F0FF]"
+                  />
+                  <label htmlFor="confirm-mnemonic" className="text-xs font-bold text-gray-300 uppercase tracking-tight cursor-pointer">
+                    I have safely stored my 25-word recovery phrase.
+                  </label>
                 </div>
+
+                <button
+                  onClick={() => setStep('success')}
+                  disabled={!hasConfirmedMnemonic}
+                  className="w-full py-4 bg-[#00F0FF] text-black font-black uppercase tracking-widest rounded-2xl shadow-[0_0_40px_rgba(0,240,255,0.2)] hover:brightness-110 active:scale-95 disabled:opacity-30 disabled:grayscale transition-all flex items-center justify-center gap-2"
+                >
+                  Finalize Vault <ArrowRight size={20} strokeWidth={3} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 'custodial-import' && (
+            <motion.div
+              key="custodial-import"
+              variants={containerVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="max-w-xl mx-auto space-y-8"
+            >
+              <button 
+                onClick={() => setStep('custodial-choice')}
+                className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors uppercase font-bold text-xs tracking-widest"
+              >
+                <ArrowLeft size={14} /> Back
+              </button>
+
+              <div className="text-center space-y-4">
+                <h2 className="text-4xl font-black text-white uppercase italic tracking-tight">Import <span className="text-[#00F0FF] not-italic">Vault</span></h2>
+                <p className="text-gray-400">Enter your 25-word recovery phrase below.</p>
+              </div>
+
+              <div className="space-y-6">
+                <textarea
+                  value={importMnemonic}
+                  onChange={(e) => setImportMnemonic(e.target.value)}
+                  placeholder="word1 word2 word3..."
+                  className="w-full h-32 p-6 rounded-3xl bg-[#141C18] border border-white/10 text-[#00F0FF] font-mono text-sm focus:border-[#00F0FF]/50 outline-none transition-all resize-none"
+                />
+
+                {error && (
+                  <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleCustodialImport}
+                  disabled={isLoading || !importMnemonic.trim()}
+                  className="w-full py-4 bg-[#00F0FF] text-black font-black uppercase tracking-widest rounded-2xl shadow-[0_0_40px_rgba(0,240,255,0.2)] hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                >
+                  {isLoading ? <Loader2 size={20} className="animate-spin" /> : "Verify & Import"}
+                  <ArrowRight size={20} strokeWidth={3} />
+                </button>
               </div>
             </motion.div>
           )}
@@ -274,30 +406,30 @@ const OnboardingPage: React.FC = () => {
               key="success"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-center space-y-8"
+              className="text-center space-y-12"
             >
               <div className="flex justify-center">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-[#C0FF00] blur-[60px] opacity-20 rounded-full" />
-                  <div className="relative bg-[#141C18] border border-[#C0FF00]/30 w-32 h-32 rounded-[2.5rem] flex items-center justify-center rotate-12">
-                    <CheckCircle2 size={64} className="text-[#C0FF00] -rotate-12" strokeWidth={2.5} />
+                  <div className="absolute inset-0 bg-[#C0FF00] blur-[80px] opacity-20 rounded-full animate-pulse" />
+                  <div className="relative bg-[#141C18] border-2 border-[#C0FF00]/50 w-40 h-40 rounded-[3.5rem] flex items-center justify-center rotate-12">
+                    <CheckCircle2 size={80} className="text-[#C0FF00] -rotate-12" strokeWidth={2.5} />
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h2 className="text-6xl font-black text-white italic uppercase tracking-tighter leading-none">Vault <br /><span className="text-[#C0FF00] not-italic">Armed</span></h2>
-                <p className="text-gray-400 text-lg font-medium tracking-tight">Onboarding complete. Your Algorand wallet is ready to stalk some pennies.</p>
+              <div className="space-y-6">
+                <h2 className="text-7xl font-black text-white italic uppercase tracking-tighter leading-none">Vault <br /><span className="text-[#C0FF00] not-italic">Armed</span></h2>
+                <p className="text-gray-400 text-xl font-medium tracking-tight max-w-lg mx-auto">
+                  Security protocols established. Your financial fortress is now fully operational on the Algorand blockchain.
+                </p>
               </div>
 
-              <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="w-full md:w-80 py-6 bg-[#C0FF00] text-black font-black text-lg uppercase tracking-[0.2em] rounded-[2rem] hover:brightness-110 active:scale-95 transition-all shadow-[0_0_60px_rgba(192,255,0,0.3)] flex items-center justify-center gap-3"
-                >
-                  Enter Dashboard <ArrowRight size={24} strokeWidth={3} />
-                </button>
-              </div>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="group w-full md:w-96 py-6 bg-gradient-to-r from-[#C0FF00] to-[#00F0FF] text-black font-black text-xl uppercase tracking-[0.2em] rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_60px_rgba(192,255,0,0.4)] flex items-center justify-center gap-4 mt-8"
+              >
+                Enter Dashboard <ArrowRight size={28} strokeWidth={3} className="group-hover:translate-x-2 transition-transform" />
+              </button>
             </motion.div>
           )}
         </AnimatePresence>

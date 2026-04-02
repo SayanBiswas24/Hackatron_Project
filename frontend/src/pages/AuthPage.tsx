@@ -13,7 +13,9 @@ import {
   ArrowLeft,
   Zap,
   CheckCircle,
+  Loader2
 } from 'lucide-react';
+import { api } from '../lib/api';
 
 /* ─── Types ─────────────────────────────── */
 type Mode = 'signin' | 'signup';
@@ -75,13 +77,15 @@ export default function AuthPage() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
   const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
 
   /* Sign-up fields */
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [wallet, setWallet] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
 
@@ -100,16 +104,45 @@ export default function AuthPage() {
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
       if (mode === 'signup') {
-        navigate('/onboarding');
+        if (password !== confirm) {
+           setError("Passwords do not match");
+           setIsLoading(false);
+           return;
+        }
+
+        const res = await api.signup({
+          fullName,
+          email,
+          password
+        });
+        
+        localStorage.setItem('ps_user_id', res.userId);
+        setSubmitted(true);
+        // New users always go to onboarding
+        setTimeout(() => navigate('/onboarding'), 2200);
       } else {
-        navigate('/dashboard');
+        const res = await api.signin({
+          email: siEmail,
+          password: siPassword
+        });
+
+        localStorage.setItem('ps_user_id', res.userId);
+        setSubmitted(true);
+        // Existing users go to dashboard if onboarding is complete, otherwise onboarding
+        const target = res.onboardingComplete ? '/dashboard' : '/onboarding';
+        setTimeout(() => navigate(target), 2200);
       }
-    }, 2200);
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred");
+      setIsLoading(false);
+    }
   };
 
   const formVariants = {
@@ -216,6 +249,16 @@ export default function AuthPage() {
                     <p className="text-xs text-gray-400 mt-1">Start saving on Algorand today — no bank needed.</p>
                   </div>
 
+                  {error && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold"
+                    >
+                      {error}
+                    </motion.div>
+                  )}
+
                   <Field
                     id="fullName" label="Full Name" placeholder="Satoshi Nakamoto"
                     value={fullName} onChange={setFullName}
@@ -225,12 +268,6 @@ export default function AuthPage() {
                     id="email" label="Email Address" type="email" placeholder="satoshi@algorand.io"
                     value={email} onChange={setEmail}
                     icon={<Mail size={15} />}
-                  />
-                  <Field
-                    id="wallet" label="Algorand Wallet Address (optional)"
-                    placeholder="ALGO… (e.g. from Pera Wallet)"
-                    value={wallet} onChange={setWallet}
-                    icon={<Wallet size={15} />}
                   />
                   <Field
                     id="password" label="Password" type={showPass ? 'text' : 'password'}
@@ -263,10 +300,12 @@ export default function AuthPage() {
 
                   <button
                     type="submit"
-                    className="mt-2 w-full rounded-xl py-3 font-bold text-sm text-black transition-all duration-200 hover:brightness-110 active:scale-95"
+                    disabled={isLoading}
+                    className="mt-2 w-full rounded-xl py-3 font-bold text-sm text-black transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     style={{ background: '#C0FF00', boxShadow: '0 0 24px rgba(192,255,0,0.25)' }}
                   >
-                    Create My Vault →
+                    {isLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+                    {isLoading ? 'Processing...' : 'Create My Vault →'}
                   </button>
 
                   <p className="text-center text-xs text-gray-400 mt-1">
@@ -295,6 +334,16 @@ export default function AuthPage() {
                     <p className="text-xs text-gray-400 mt-1">Access your vaults and savings dashboard.</p>
                   </div>
 
+                  {error && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold"
+                    >
+                      {error}
+                    </motion.div>
+                  )}
+
                   <Field
                     id="si-email" label="Email Address" type="email" placeholder="satoshi@algorand.io"
                     value={siEmail} onChange={setSiEmail}
@@ -316,10 +365,12 @@ export default function AuthPage() {
 
                   <button
                     type="submit"
-                    className="mt-2 w-full rounded-xl py-3 font-bold text-sm text-black transition-all duration-200 hover:brightness-110 active:scale-95"
+                    disabled={isLoading}
+                    className="mt-2 w-full rounded-xl py-3 font-bold text-sm text-black transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     style={{ background: '#C0FF00', boxShadow: '0 0 24px rgba(192,255,0,0.25)' }}
                   >
-                    Enter My Vault →
+                    {isLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+                    {isLoading ? 'Accessing...' : 'Enter My Vault →'}
                   </button>
 
                   <div className="relative my-1">

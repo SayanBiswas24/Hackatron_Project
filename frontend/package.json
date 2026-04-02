@@ -10,7 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@algorandfoundation/algokit-utils": "^9.2.0",
+    "@perawallet/connect": "^1.5.2",
     "@studio-freight/lenis": "^1.0.42",
+    "@txnlab/use-wallet-react": "^4.6.0",
+    "algosdk": "^3.5.2",
+    "buffer": "^6.0.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
     "gsap": "^3.14.2",
@@ -18,6 +23,7 @@
     "motion": "^12.38.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-is": "^18.2.0",
     "react-router-dom": "^7.13.2",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0"

@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String   @id @default(uuid())
+  walletAddress   String?  @unique // Populated upon Pera connection or custodial setup
+  walletType      String?  // 'PERA' or 'CUSTODIAL'
+  encryptedMnemonic String? // Encrypted AES-256 mnemonic for custodial wallets
+  onboardingComplete Boolean @default(false)
+  
+  email           String   @unique // Primary sign-in identifier
+  password        String   // Hashed
+  fullName        String?
+  displayName     String?
+  avatarUrl       String?
+  
+  // Customization
+  themePreference String   @default("neon-lime") 
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  goals           GoalMetadata[]
+  activities      ActivityLog[]
+}
+
+model GoalMetadata {
+  id              String   @id @default(uuid())
+  onChainGoalId   Int      
+  
+  // Relation to User by internal ID
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+
+  title           String   
+  description     String?  
+  category        String   @default("general") 
+  coverImageUrl   String?  
+  colorHex        String?  
+  
+  targetAmount    BigInt   
+  currentBalance  BigInt   
+  deadline        DateTime 
+  status          String   @default("ACTIVE") 
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, onChainGoalId]) 
+}
+
+model ActivityLog {
+  id              String   @id @default(uuid())
+  transactionId   String   @unique 
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  
+  onChainGoalId   Int?     
+  
+  type            String   
+  amount          BigInt?  
+  
+  timestamp       DateTime @default(now())
+}

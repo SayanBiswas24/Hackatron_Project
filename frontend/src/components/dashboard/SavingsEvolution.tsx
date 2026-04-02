@@ -24,10 +24,39 @@ const emptyData = [
 
 interface SavingsEvolutionProps {
   isEmpty?: boolean;
+  activities?: any[];
 }
 
-const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false }) => {
-  const chartData = isEmpty ? emptyData : initialData;
+const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, activities = [] }) => {
+  // Logic to transform activities into chart data (simplified for now: group by month)
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  let chartData = emptyData;
+  
+  if (!isEmpty && activities.length > 0) {
+    // Sort activities by date
+    const sorted = [...activities].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // Calculate cumulative balance
+    let balance = 0;
+    const monthlyData: Record<string, number> = {};
+    
+    sorted.forEach(act => {
+      const date = new Date(act.date);
+      const month = monthNames[date.getMonth()];
+      
+      if (act.type === 'deposit') balance += act.amount;
+      if (act.type === 'withdrawal') balance -= act.amount;
+      
+      monthlyData[month] = balance;
+    });
+
+    // Ensure all 7 months (or current range) are represented
+    chartData = initialData.map(d => ({
+      name: d.name,
+      value: monthlyData[d.name] ?? balance // Carry over last balance if no activity in that month
+    }));
+  }
 
   return (
     <Card className="col-span-full xl:col-span-8 bg-[#141C18] backdrop-blur-3xl border-white/5 shadow-2xl">
