@@ -56,15 +56,15 @@ const DashboardPage: React.FC = () => {
 
         {/* Global Toast Container */}
         <div className="fixed top-24 right-8 z-[200] flex flex-col gap-4">
-           <AnimatePresence>
-              {toasts.map((toast) => (
-                <StatusToast 
-                  key={toast.id}
-                  {...toast}
-                  onClose={removeToast}
-                />
-              ))}
-           </AnimatePresence>
+          <AnimatePresence>
+            {toasts.map((toast) => (
+              <StatusToast
+                key={toast.id}
+                {...toast}
+                onClose={removeToast}
+              />
+            ))}
+          </AnimatePresence>
         </div>
 
         <motion.div
@@ -84,21 +84,20 @@ const DashboardPage: React.FC = () => {
 
             {/* Test Simulation Controls */}
             <motion.div variants={itemVariants} className="flex items-center gap-3">
-               <button 
-                 onClick={() => setIsAdminMode(!isAdminMode)}
-                 className={`px-4 py-2 rounded-xl text-[0.65rem] font-black uppercase tracking-widest border transition-all ${
-                   isAdminMode ? 'bg-[#C0FF00]/10 border-[#C0FF00] text-[#C0FF00]' : 'bg-white/5 border-white/10 text-gray-500'
-                 }`}
-               >
-                 {isAdminMode ? 'Show Real Data' : 'Simulate New User'}
-               </button>
-               <button 
-                 onClick={() => addToast('error', 'Reverted: Insufficient USDC', 'Asset transfer denied by smart contract logic.')}
-                 className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-all"
-                 title="Simulate Error"
-               >
-                 <AlertCircle size={18} />
-               </button>
+              <button
+                onClick={() => setIsAdminMode(!isAdminMode)}
+                className={`px-4 py-2 rounded-xl text-[0.65rem] font-black uppercase tracking-widest border transition-all ${isAdminMode ? 'bg-[#C0FF00]/10 border-[#C0FF00] text-[#C0FF00]' : 'bg-white/5 border-white/10 text-gray-500'
+                  }`}
+              >
+                {isAdminMode ? 'Show Real Data' : 'Simulate New User'}
+              </button>
+              <button
+                onClick={() => addToast('error', 'Reverted: Insufficient USDC', 'Asset transfer denied by smart contract logic.')}
+                className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-all"
+                title="Simulate Error"
+              >
+                <AlertCircle size={18} />
+              </button>
             </motion.div>
           </div>
 
@@ -111,7 +110,7 @@ const DashboardPage: React.FC = () => {
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
             {/* Chart Section */}
             <motion.div variants={itemVariants} className="xl:col-span-8">
-              <SavingsEvolution />
+              <SavingsEvolution isEmpty={isEmpty} />
             </motion.div>
 
             {/* Activity Section */}
@@ -128,28 +127,28 @@ const DashboardPage: React.FC = () => {
 
         {/* Informational Banner for New Users */}
         {isEmpty && (
-           <motion.div 
-             initial={{ opacity: 0, y: 50 }}
-             animate={{ opacity: 1, y: 0 }}
-             className="mt-8 p-6 rounded-[2.5rem] bg-[#C0FF00]/5 border border-[#C0FF00]/20 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative shadow-2xl"
-           >
-              <div className="absolute -left-10 top-0 w-32 h-32 bg-[#C0FF00]/10 blur-[60px] rounded-full" />
-              <div className="flex items-center gap-6 relative z-10">
-                 <div className="p-4 rounded-3xl bg-[#C0FF00]/10 text-[#C0FF00]">
-                    <ShieldCheck size={32} />
-                 </div>
-                 <div className="space-y-1 text-center md:text-left">
-                    <p className="text-lg font-black text-white italic uppercase tracking-tight">On-Chain Verification Required</p>
-                    <p className="text-xs text-gray-500 font-medium max-w-md">To begin saving, initialize your first goal so the smart contract can allocate box storage for your deposits.</p>
-                 </div>
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-8 p-6 rounded-[2.5rem] bg-[#C0FF00]/5 border border-[#C0FF00]/20 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative shadow-2xl"
+          >
+            <div className="absolute -left-10 top-0 w-32 h-32 bg-[#C0FF00]/10 blur-[60px] rounded-full" />
+            <div className="flex items-center gap-6 relative z-10">
+              <div className="p-4 rounded-3xl bg-[#C0FF00]/10 text-[#C0FF00]">
+                <ShieldCheck size={32} />
               </div>
-              <button 
-                onClick={() => addToast('success', 'USDC Funding Initiated', 'Testnet USDC is being bridged to your wallet.')}
-                className="bg-[#C0FF00] text-black px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-[0_0_30px_rgba(192,255,0,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2 relative z-10"
-              >
-                 <Zap size={16} fill="currentColor" /> Request Testnet USDC
-              </button>
-           </motion.div>
+              <div className="space-y-1 text-center md:text-left">
+                <p className="text-lg font-black text-white italic uppercase tracking-tight">On-Chain Verification Required</p>
+                <p className="text-xs text-gray-500 font-medium max-w-md">To begin saving, initialize your first goal so the smart contract can allocate box storage for your deposits.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => addToast('success', 'USDC Funding Initiated', 'Testnet USDC is being bridged to your wallet.')}
+              className="bg-[#C0FF00] text-black px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-[0_0_30px_rgba(192,255,0,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2 relative z-10"
+            >
+              <Zap size={16} fill="currentColor" /> Request Testnet USDC
+            </button>
+          </motion.div>
         )}
       </div>
     </DashboardLayout>

@@ -110,7 +110,7 @@ const GoalsOverview: React.FC<{ goals?: Goal[] }> = ({ goals = initialGoals }) =
             );
           })}
           {/* Add New Goal Card */}
-          <button 
+          <button
             onClick={() => window.dispatchEvent(new CustomEvent('open-create-goal'))}
             className="h-full min-h-[220px] rounded-2xl border-2 border-dashed border-white/5 bg-[#101614] backdrop-blur-3xl flex flex-col items-center justify-center gap-4 group hover:border-[#C0FF00]/40 transition-all duration-500"
           >

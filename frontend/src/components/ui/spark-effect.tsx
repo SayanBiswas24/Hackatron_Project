@@ -29,9 +29,9 @@ export function SparkEffect({
   speed = 0.04,
   lifetime = 200,
   direction = { x: -0.5, y: 1 },
-  size = [3, 3], 
+  size = [3, 3],
   maxopacity = 1.0, // Maximum opacity
-  color = '192, 255, 0', 
+  color = '192, 255, 0',
   randColor = false,
   acceleration = [5, 40]
 }: SparkEffectProps) {
@@ -98,7 +98,7 @@ export function SparkEffect({
     function draw() {
       if (!ctx || !canvas) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
       // Neon Glow Effect
       ctx.shadowBlur = 12; // Increased glow intensity
       ctx.shadowColor = `rgba(${OPT.color}, 1.0)`;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { IndianRupee, TrendingUp, Target, ShieldCheck, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { Card, CardContent } from '../ui/card';
+import { GlowCard } from '../ui/spotlight-card';
 import { cn } from '../../lib/utils';
 
 const StatCard = ({
@@ -10,7 +10,8 @@ const StatCard = ({
   trend,
   trendValue,
   isPositive,
-  color
+  color,
+  glowColor = 'lime',
 }: {
   title: string;
   value: string;
@@ -19,13 +20,14 @@ const StatCard = ({
   trendValue?: string;
   isPositive?: boolean;
   color?: string;
+  glowColor?: 'lime' | 'cyan' | 'purple' | 'red' | 'orange';
 }) => (
-  <Card className="relative overflow-hidden group border-white/5 bg-[#141C18] backdrop-blur-3xl hover:border-[#C0FF00]/20 transition-all duration-500">
+  <GlowCard glowColor={glowColor} customSize className="group w-full">
     <div
       className="absolute -right-8 -top-8 w-32 h-32 rounded-full blur-[80px] transition-all duration-700 opacity-20 group-hover:opacity-40"
       style={{ background: color || '#C0FF00' }}
     />
-    <CardContent className="p-6 relative z-10 flex flex-col gap-4">
+    <div className="p-6 relative z-10 flex flex-col gap-4">
       <div className="flex justify-between items-start">
         <div className="p-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-gray-400 group-hover:text-[#C0FF00] group-hover:border-[#C0FF00]/30 transition-all duration-300">
           <Icon size={22} strokeWidth={1.5} />
@@ -52,8 +54,8 @@ const StatCard = ({
         </div>
         {trend && <p className="text-[0.65rem] text-gray-500 mt-1 font-medium italic">{trend}</p>}
       </div>
-    </CardContent>
-  </Card>
+    </div>
+  </GlowCard>
 );
 
 interface StatsGridProps {
@@ -63,9 +65,9 @@ interface StatsGridProps {
   isEmpty?: boolean;
 }
 
-const StatsGrid: React.FC<StatsGridProps> = ({ 
-  totalSaved = 124450, 
-  activeGoals = 3, 
+const StatsGrid: React.FC<StatsGridProps> = ({
+  totalSaved = 124450,
+  activeGoals = 3,
   totalYield = 10240,
   isEmpty = false
 }) => {
@@ -78,6 +80,7 @@ const StatsGrid: React.FC<StatsGridProps> = ({
         trendValue={isEmpty ? undefined : "12.4%"}
         isPositive={true}
         color="#C0FF00"
+        glowColor="lime"
       />
       <StatCard
         title="Active Goals"
@@ -85,6 +88,7 @@ const StatsGrid: React.FC<StatsGridProps> = ({
         icon={Target}
         trend={isEmpty ? "Setup your first target" : "2 goals near completion"}
         color="#00F0FF"
+        glowColor="cyan"
       />
       <StatCard
         title="Projected Yield"
@@ -93,6 +97,7 @@ const StatsGrid: React.FC<StatsGridProps> = ({
         trendValue={isEmpty ? undefined : "8.4% APY"}
         isPositive={true}
         color="#BF5AF2"
+        glowColor="purple"
       />
       <StatCard
         title="Protection Level"
@@ -100,6 +105,7 @@ const StatsGrid: React.FC<StatsGridProps> = ({
         icon={ShieldCheck}
         trend={isEmpty ? "Awaiting first deposit" : "Quant-verified security"}
         color="#FF3B30"
+        glowColor="red"
       />
     </div>
   );
