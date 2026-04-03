@@ -12,6 +12,8 @@ model User {
   walletType      String?  // 'PERA' or 'CUSTODIAL'
   encryptedMnemonic String? // Encrypted AES-256 mnemonic for custodial wallets
   onboardingComplete Boolean @default(false)
+  faucetAirdropped   Boolean @default(false)
+  lastFaucetAt       DateTime? // Cooldown for faucet/purchase
   
   email           String   @unique // Primary sign-in identifier
   password        String   // Hashed

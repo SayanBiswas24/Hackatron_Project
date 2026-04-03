@@ -8,6 +8,11 @@ import walletRoutes from './routes/wallet';
 
 dotenv.config();
 
+// Standard BigInt JSON serialization fix
+(BigInt.prototype as any).toJSON = function() {
+  return this.toString();
+};
+
 const app = express();
 const port = process.env.PORT || 3000;
 

@@ -17,6 +17,16 @@ import {
 } from 'lucide-react';
 import { FlippingCard } from '../components/ui/flipping-card';
 import { api } from '../lib/api';
+import algosdk from 'algosdk';
+import { PennyStalkerClient } from '../lib/contracts/PennyStalkerClient';
+
+const ALGOD_SERVER = import.meta.env.VITE_ALGOD_SERVER || 'https://testnet-api.algonode.cloud';
+const ALGOD_PORT = import.meta.env.VITE_ALGOD_PORT || '';
+const ALGOD_TOKEN = import.meta.env.VITE_ALGOD_TOKEN || '';
+const APP_ID = BigInt(import.meta.env.VITE_APP_ID || '0');
+const USDC_ASSET_ID = BigInt(import.meta.env.VITE_USDC_ASSET_ID || '10458941');
+
+const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT);
 
 type OnboardingStep = 
   | 'selection' 
@@ -24,6 +34,7 @@ type OnboardingStep =
   | 'custodial-create' 
   | 'custodial-import' 
   | 'pera-status' 
+  | 'syncing'
   | 'success';
 
 const OnboardingPage: React.FC = () => {
@@ -34,8 +45,9 @@ const OnboardingPage: React.FC = () => {
   const [importMnemonic, setImportMnemonic] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncMessage, setSyncMessage] = useState('Establishing Secure Handshake...');
   
-  const { wallets } = useWallet();
+  const { wallets, activeWallet, activeAddress, transactionSigner } = useWallet();
   const navigate = useNavigate();
   const userId = localStorage.getItem('ps_user_id');
 
@@ -60,7 +72,10 @@ const OnboardingPage: React.FC = () => {
           type: 'PERA',
           walletAddress: address
         });
-        setStep('success');
+        
+        // Move to syncing state instead of direct success
+        setStep('syncing');
+        performSync('PERA', address);
       }
     } catch (err: any) {
       setError(err.message || "Failed to connect Pera Wallet");
@@ -96,9 +111,61 @@ const OnboardingPage: React.FC = () => {
         type: 'CUSTODIAL',
         mnemonic: importMnemonic.trim()
       });
-      setStep('success');
+      setStep('syncing');
+      performSync('CUSTODIAL');
     } catch (err: any) {
       setError(err.message || "Failed to import vault. Ensure mnemonic is valid.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const performSync = async (type: 'PERA' | 'CUSTODIAL', address?: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      if (type === 'CUSTODIAL') {
+        setSyncMessage("Initiating Vault Funding...");
+        // Backend handles custodial opt-ins (it has the keys) 
+        // which now includes airdrop logic.
+        await api.optin(userId!);
+        
+        setSyncMessage("Finalizing Smart Contract Opt-ins...");
+        // Wait a small bit for UI to show the final step
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      } else if (type === 'PERA' && address) {
+        setSyncMessage("Review & Sign Transactions in Pera...");
+        if (!activeWallet || activeWallet.id !== WalletId.PERA || activeAddress !== address) {
+          throw new Error("Pera Wallet not active or address mismatch");
+        }
+
+        const client = new PennyStalkerClient({
+          algodClient,
+          appId: APP_ID,
+          sender: {
+            addr: address,
+            signer: transactionSigner
+          }
+        });
+
+        console.log("🔗 Opting Pera user into App...");
+        await client.optInToApp();
+
+        console.log("🔗 Opting Pera user into USDC...");
+        await client.optIntoUsdc(USDC_ASSET_ID);
+      }
+      setStep('success');
+    } catch (err: any) {
+      console.error("Sync error:", err);
+      // Even if blockchain opt-in fails (e.g. no funds), we don't want to block the dashboard
+      // but we should inform the user they need to fund their wallet.
+      if (err.message?.includes("overspent") || err.message?.includes("balance")) {
+        setError("Vault established, but on-chain activation requires funding (ALGO). You can proceed to the dashboard and fund it later.");
+      } else {
+        setError(err.message || "On-chain activation failed. Check your network.");
+      }
+      // Give the user a way to skip or retry
+      setStep('success'); // Still allow entry to dashboard for now
     } finally {
       setIsLoading(false);
     }
@@ -344,12 +411,40 @@ const OnboardingPage: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => setStep('success')}
+                  onClick={() => { setStep('syncing'); performSync('CUSTODIAL'); }}
                   disabled={!hasConfirmedMnemonic}
                   className="w-full py-4 bg-[#00F0FF] text-black font-black uppercase tracking-widest rounded-2xl shadow-[0_0_40px_rgba(0,240,255,0.2)] hover:brightness-110 active:scale-95 disabled:opacity-30 disabled:grayscale transition-all flex items-center justify-center gap-2"
                 >
                   Finalize Vault <ArrowRight size={20} strokeWidth={3} />
                 </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 'syncing' && (
+            <motion.div
+              key="syncing"
+              variants={containerVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="text-center space-y-12"
+            >
+              <div className="flex justify-center">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-[#00F0FF] blur-[80px] opacity-20 rounded-full animate-pulse" />
+                  <div className="relative bg-[#141C18] border-2 border-[#00F0FF]/30 w-40 h-40 rounded-[3.5rem] flex items-center justify-center">
+                    <Loader2 size={80} className="text-[#00F0FF] animate-spin" strokeWidth={1.5} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <h2 className="text-5xl font-black text-white italic uppercase tracking-tighter leading-none">Syncing <br /><span className="text-[#00F0FF] not-italic">Protocols</span></h2>
+                <div className="space-y-3 max-w-sm mx-auto">
+                    <p className="text-[#00F0FF] text-[0.7rem] font-bold uppercase tracking-[0.35em] animate-pulse">{syncMessage}</p>
+                    <p className="text-gray-400 text-sm font-medium">Please wait while we register your vault on the Algorand blockchain.</p>
+                </div>
               </div>
             </motion.div>
           )}

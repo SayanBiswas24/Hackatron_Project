@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/dashboard/DashboardLayout';
 import { motion } from 'framer-motion';
 import { SparkEffect } from '../../components/ui/spark-effect';
@@ -7,72 +7,55 @@ import type { Goal } from '../../components/dashboard/GoalCard';
 import GoalDetailModal from '../../components/dashboard/GoalDetailModal';
 import CreateGoalModal from '../../components/dashboard/CreateGoalModal';
 import EmptyState from '../../components/dashboard/EmptyState';
-import { Target, TrendingUp, Zap, Plus, Search, Filter } from 'lucide-react';
-
-const mockGoals: Goal[] = [
-  { 
-    id: 1, 
-    name: 'New Car', 
-    target: 1500000, 
-    saved: 975000, 
-    color: '#C0FF00', 
-    icon: Target,
-    createdAt: '12 Jan 2026',
-    deadline: '12 Jul 2027',
-    frequency: 'Monthly',
-    lastDeposit: '24 Mar 2026',
-    status: 'active',
-    yieldEarned: 24500
-  },
-  { 
-    id: 2, 
-    name: 'Emergency Fund', 
-    target: 500000, 
-    saved: 180000, 
-    color: '#00F0FF', 
-    icon: Zap,
-    createdAt: '01 Feb 2026',
-    deadline: 'Ongoing',
-    frequency: 'Weekly',
-    lastDeposit: '28 Mar 2026',
-    status: 'active',
-    yieldEarned: 12800
-  },
-  { 
-    id: 3, 
-    name: 'Trip to Ladakh', 
-    target: 80000, 
-    saved: 7500, 
-    color: '#BF5AF2', 
-    icon: TrendingUp,
-    createdAt: '15 Mar 2026',
-    deadline: '15 Sep 2026',
-    frequency: 'Monthly',
-    lastDeposit: '15 Mar 2026',
-    status: 'active',
-    yieldEarned: 450
-  },
-  { 
-    id: 4, 
-    name: 'Retirement fund', 
-    target: 25000000, 
-    saved: 125000, 
-    color: '#FF9F0A', 
-    icon: Target,
-    createdAt: '01 Jan 2026',
-    deadline: '01 Jan 2050',
-    frequency: 'Monthly',
-    lastDeposit: '02 Mar 2026',
-    status: 'active',
-    yieldEarned: 8400
-  },
-];
+import { api } from '../../lib/api';
+import { Target, Plus, Search, Loader2, RefreshCw } from 'lucide-react';
 
 const GoalsPage: React.FC = () => {
-  const [goals, setGoals] = useState<Goal[]>(mockGoals);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  
+  const userId = localStorage.getItem('ps_user_id');
+
+  const fetchAndSyncGoals = async (isManual = false) => {
+    if (!userId) return;
+    if (isManual) setIsSyncing(true);
+    else setIsLoading(true);
+
+    try {
+      // First sync with on-chain data
+      const updatedGoals = await api.syncGoals(userId);
+      
+      // Transform API goal to UI goal
+      const uiGoals: Goal[] = updatedGoals.map((g: any) => ({
+        id: g.id,
+        onChainGoalId: g.onChainGoalId,
+        name: g.title,
+        target: Number(g.targetAmount),
+        saved: Number(g.currentBalance),
+        color: g.colorHex || '#C0FF00',
+        icon: Target, // Default icon
+        createdAt: new Date(g.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        deadline: new Date(g.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        status: g.status.toLowerCase(),
+        yieldEarned: 0 // Fetch from activity or indexer later
+      }));
+
+      setGoals(uiGoals);
+    } catch (err) {
+      console.error("Failed to sync goals:", err);
+    } finally {
+      setIsLoading(false);
+      setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAndSyncGoals();
+  }, []);
 
   const handleGoalClick = (goal: Goal) => {
     setSelectedGoal(goal);
@@ -126,9 +109,14 @@ const GoalsPage: React.FC = () => {
                     className="bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#C0FF00]/40 transition-all w-64"
                   />
                </div>
-               <button className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all">
-                  <Filter size={18} />
-               </button>
+               <button 
+                  onClick={() => fetchAndSyncGoals(true)}
+                  disabled={isSyncing}
+                  className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all disabled:opacity-50"
+                  title="Sync with Blockchain"
+                >
+                  <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} />
+                </button>
                <button 
                   onClick={() => setIsCreateModalOpen(true)}
                   className="flex items-center gap-2 bg-[#C0FF00] hover:brightness-110 text-black px-6 py-2.5 rounded-xl font-black text-sm uppercase tracking-widest shadow-[0_0_20px_rgba(192,255,0,0.2)] transition-all active:scale-95"
@@ -146,7 +134,12 @@ const GoalsPage: React.FC = () => {
                <span className="text-[0.65rem] font-bold text-gray-500 uppercase tracking-widest">{String(goals.length).padStart(2, '0')} Total Vaults</span>
             </div>
             
-            {goals.length === 0 ? (
+            {isLoading ? (
+               <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                  <Loader2 size={48} className="text-[#C0FF00] animate-spin" />
+                  <p className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest">Accessing Blockchain Explorer...</p>
+               </div>
+            ) : goals.length === 0 ? (
               <EmptyState type="goals" onCreateClick={() => setIsCreateModalOpen(true)} />
             ) : (
               <motion.div 

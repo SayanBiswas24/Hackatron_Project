@@ -1,5 +1,5 @@
 import React from 'react';
-import { IndianRupee, TrendingUp, Target, ShieldCheck, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { DollarSign, TrendingUp, Target, ShieldCheck, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { GlowCard } from '../ui/spotlight-card';
 import { cn } from '../../lib/utils';
 
@@ -59,51 +59,51 @@ const StatCard = ({
 );
 
 interface StatsGridProps {
-  totalSaved?: number;
-  activeGoals?: number;
-  totalYield?: number;
+  totalSaved: number;
+  activeGoals: number;
+  averageProgress?: number;
   isEmpty?: boolean;
 }
 
 const StatsGrid: React.FC<StatsGridProps> = ({
-  totalSaved = 124450,
-  activeGoals = 3,
-  totalYield = 10240,
+  totalSaved,
+  activeGoals,
+  averageProgress = 0,
   isEmpty = false
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatCard
-        title="Total Safe Savings"
-        value={isEmpty ? "₹0.00" : `₹${totalSaved.toLocaleString()}`}
-        icon={IndianRupee}
-        trendValue={isEmpty ? undefined : "12.4%"}
+        title="Total USDC Saved"
+        value={isEmpty ? "$0.00" : `$${totalSaved.toLocaleString()}`}
+        icon={DollarSign}
+        trendValue={isEmpty ? undefined : "Live"}
         isPositive={true}
         color="#C0FF00"
         glowColor="lime"
       />
       <StatCard
-        title="Active Goals"
+        title="Active Vaults"
         value={isEmpty ? "00" : String(activeGoals).padStart(2, '0')}
         icon={Target}
-        trend={isEmpty ? "Setup your first target" : "2 goals near completion"}
+        trend={isEmpty ? "Setup your first target" : "Conditioned for growth"}
         color="#00F0FF"
         glowColor="cyan"
       />
       <StatCard
-        title="Projected Yield"
-        value={isEmpty ? "₹0.00" : `₹${totalYield.toLocaleString()}`}
+        title="Average Progress"
+        value={isEmpty ? "0%" : `${averageProgress.toFixed(1)}%`}
         icon={TrendingUp}
-        trendValue={isEmpty ? undefined : "8.4% APY"}
+        trendValue={isEmpty ? undefined : "Verified"}
         isPositive={true}
         color="#BF5AF2"
         glowColor="purple"
       />
       <StatCard
-        title="Protection Level"
-        value={isEmpty ? "Active" : "Maximal"}
+        title="Protocol Security"
+        value={isEmpty ? "None" : "Maximum"}
         icon={ShieldCheck}
-        trend={isEmpty ? "Awaiting first deposit" : "Quant-verified security"}
+        trend={isEmpty ? "Awaiting first deposit" : "On-Chain Enforced"}
         color="#FF3B30"
         glowColor="red"
       />

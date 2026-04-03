@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ArrowUpRight, 
@@ -7,92 +7,73 @@ import {
   ExternalLink,
   Calendar,
   Clock,
-  Download
+  Download,
+  Loader2
 } from 'lucide-react';
 import DashboardLayout from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/ui/card';
 import { cn } from '../../lib/utils';
 import EmptyState from '../../components/dashboard/EmptyState';
+import { api } from '../../lib/api';
 
 interface Transaction {
   id: string;
-  type: 'deposit' | 'withdrawal' | 'received';
+  type: string;
   goal?: string;
-  amount: number;
+  amount: number | null;
   date: string;
   time: string;
   txHash: string;
   status: 'confirmed' | 'pending';
 }
 
-const mockTransactions: Transaction[] = [
-  {
-    id: 'tx-101',
-    type: 'deposit',
-    goal: 'New Car',
-    amount: 15000,
-    date: '24 Mar 2026',
-    time: '11:24 AM',
-    txHash: '0x7a2...4f8',
-    status: 'confirmed'
-  },
-  {
-    id: 'tx-102',
-    type: 'received',
-    goal: 'Emergency Fund',
-    amount: 240,
-    date: '23 Mar 2026',
-    time: '09:12 PM',
-    txHash: '0x9b1...2e4',
-    status: 'confirmed'
-  },
-  {
-    id: 'tx-103',
-    type: 'withdrawal',
-    goal: 'Main Vault',
-    amount: 500,
-    date: '22 Mar 2026',
-    time: '02:45 PM',
-    txHash: '0xc11...9a2',
-    status: 'confirmed'
-  },
-  {
-    id: 'tx-104',
-    type: 'deposit',
-    goal: 'Trip to Ladakh',
-    amount: 2500,
-    date: '20 Mar 2026',
-    time: '10:05 AM',
-    txHash: '0xd42...7b1',
-    status: 'confirmed'
-  },
-  {
-    id: 'tx-105',
-    type: 'received',
-    goal: 'New Car',
-    amount: 1120,
-    date: '15 Mar 2026',
-    time: '08:30 PM',
-    txHash: '0xf5a...1d3',
-    status: 'confirmed'
-  },
-  {
-    id: 'tx-106',
-    type: 'withdrawal',
-    goal: 'Home Renovations',
-    amount: 12000,
-    date: '10 Mar 2026',
-    time: '04:15 PM',
-    txHash: '0xa42...b32',
-    status: 'confirmed'
-  }
-];
-
 const TransactionsPage: React.FC = () => {
-  const [filter, setFilter] = useState<'all' | 'deposit' | 'withdrawal' | 'received'>('all');
+  const [filter, setFilter] = useState<'all' | 'deposit' | 'withdrawal' | 'goal_created'>('all');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const userId = localStorage.getItem('ps_user_id');
 
-  const filteredTransactions = mockTransactions.filter(tx => {
-    return filter === 'all' || tx.type === filter;
+  useEffect(() => {
+    const loadTransactions = async () => {
+      if (!userId) return;
+      try {
+        setIsLoading(true);
+        const [activities, goals] = await Promise.all([
+          api.fetchActivity(userId),
+          api.fetchGoals(userId)
+        ]);
+
+        const mapped: Transaction[] = activities.map((a: any) => {
+          const timestamp = new Date(a.timestamp);
+          const type = a.type.toLowerCase();
+          return {
+            id: a.id,
+            type: type === 'goal_created' ? 'vault Initialized' : type,
+            goal: goals.find((g: any) => g.onChainGoalId === a.onChainGoalId)?.title || 'Vault',
+            amount: a.amount ? Number(a.amount) / 1000000 : null,
+            date: timestamp.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+            time: timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            txHash: a.transactionId,
+            status: 'confirmed'
+          };
+        });
+        setTransactions(mapped);
+      } catch (err) {
+        console.error('Failed to load transactions:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTransactions();
+  }, [userId]);
+
+  const filteredTransactions = transactions.filter(tx => {
+    if (filter === 'all') return true;
+    if (filter === 'deposit' && tx.type === 'deposit') return true;
+    if (filter === 'withdrawal' && tx.type === 'withdrawal') return true;
+    if (filter === 'goal_created' && tx.type === 'vault initialized') return true;
+    return false;
   });
 
   const containerVariants = {
@@ -132,14 +113,14 @@ const TransactionsPage: React.FC = () => {
             {[
               { id: 'all', label: 'All Activities' },
               { id: 'deposit', label: 'Deposits' },
-              { id: 'received', label: 'Received' },
+              { id: 'goal_created', label: 'Vault Initialized' },
               { id: 'withdrawal', label: 'Withdrawals' }
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setFilter(tab.id as 'all' | 'deposit' | 'withdrawal' | 'received')}
+                onClick={() => setFilter(tab.id as any)}
                 className={cn(
-                  "flex-1 px-5 py-2.5 rounded-lg text-[0.6rem] font-black uppercase tracking-widest transition-all",
+                  "flex-1 px-5 py-2.5 rounded-lg text-[0.6rem] font-black uppercase tracking-widest transition-all whitespace-nowrap",
                   filter === tab.id 
                     ? "bg-[#C0FF00] text-black shadow-[0_0_25px_rgba(192,255,0,0.3)]" 
                     : "text-gray-500 hover:text-white"
@@ -154,7 +135,13 @@ const TransactionsPage: React.FC = () => {
         {/* Transactions list */}
         <motion.div variants={itemVariants}>
           <Card className="bg-[#141C18]/50 border-white/5 shadow-2xl overflow-hidden backdrop-blur-3xl rounded-2xl">
-            <div className="overflow-x-auto">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <Loader2 size={48} className="text-[#C0FF00] animate-spin" />
+                <p className="text-[0.65rem] font-black text-gray-500 uppercase tracking-[0.2em] italic">Pulling records from blockchain...</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/[0.02]">
@@ -196,7 +183,7 @@ const TransactionsPage: React.FC = () => {
                              "text-sm font-black tracking-tight",
                              tx.type === 'withdrawal' ? "text-red-400" : "text-white"
                            )}>
-                             {tx.type === 'withdrawal' ? '-' : '+'}₹{tx.amount.toLocaleString()}
+                             {tx.type === 'withdrawal' ? '-' : (tx.amount ? '+' : '')}₹{(tx.amount ?? 0).toLocaleString()}
                            </p>
                            {tx.type === 'received' && (
                               <span className="text-[0.5rem] font-bold text-[#C0FF00] bg-[#C0FF00]/10 px-1 py-0.5 rounded border border-[#C0FF00]/20 leading-none">YIELD</span>
@@ -242,6 +229,7 @@ const TransactionsPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            )}
           </Card>
         </motion.div>
       </motion.div>

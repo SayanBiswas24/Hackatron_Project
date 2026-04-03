@@ -5,12 +5,15 @@ import StatsGrid from '../../components/dashboard/StatsGrid';
 import SavingsEvolution from '../../components/dashboard/SavingsEvolution';
 import GoalsOverview from '../../components/dashboard/GoalsOverview';
 import RecentActivity from '../../components/dashboard/RecentActivity';
+import DepositModal from '../../components/dashboard/DepositModal';
+import FundAccountModal from '../../components/dashboard/FundAccountModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SparkEffect } from '../../components/ui/spark-effect';
 import StatusToast from '../../components/dashboard/StatusToast';
 import type { ToastType } from '../../components/dashboard/StatusToast';
-import { ShieldCheck, Zap, AlertCircle, Loader2, Target } from 'lucide-react';
+import { ShieldCheck, Zap, Loader2, Target, Wallet } from 'lucide-react';
 import { api } from '../../lib/api';
+import { cn } from '../../lib/utils';
 
 interface Toast {
   id: string;
@@ -21,8 +24,11 @@ interface Toast {
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [isAdminMode, setIsAdminMode] = useState(false); // Simulated "First Login" toggle
+  const [isAdminMode, setIsAdminMode] = useState(false); 
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [selectedGoal, setSelectedGoal] = useState<any>(null);
+  const [isDepositOpen, setIsDepositOpen] = useState(false);
+  const [isFundingOpen, setIsFundingOpen] = useState(false);
   
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
@@ -39,63 +45,68 @@ const DashboardPage: React.FC = () => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const initializeData = async () => {
+    if (!userId) return;
+    try {
+      setIsLoading(true);
+      const user = await api.fetchUser(userId);
+      setUserData(user);
+      
+      const fetchedGoals = await api.fetchGoals(userId);
+      const mappedGoals = fetchedGoals.map((g: any) => ({
+        id: g.id,
+        onChainGoalId: g.onChainGoalId,
+        name: g.title,
+        target: Number(g.targetAmount), 
+        saved: Number(g.currentBalance),
+        color: g.colorHex || '#C0FF00',
+        icon: Target,
+        createdAt: new Date(g.createdAt).toLocaleDateString(),
+        deadline: new Date(g.deadline).toLocaleDateString(),
+        frequency: 'Flexible',
+        lastDeposit: 'Recent',
+        status: g.status.toLowerCase(),
+        yieldEarned: 0,
+      }));
+
+      const fetchedActivities = await api.fetchActivity(userId);
+      const mappedActivities = fetchedActivities.map((a: any) => ({
+        id: a.id,
+        type: a.type.toLowerCase() === 'goal_created' ? 'goal_creation' : a.type.toLowerCase(),
+        name: a.type === 'DEPOSIT' ? 'Vault Fast-Track' : a.type === 'WITHDRAWAL' ? 'Goal Reached' : 'Initialized Vault',
+        amount: a.amount ? Number(a.amount) / 1000000 : null,
+        date: new Date(a.timestamp).toLocaleDateString(),
+        status: 'completed',
+        goal: fetchedGoals.find((g: any) => g.onChainGoalId === a.onChainGoalId)?.title || 'Vault',
+      }));
+      
+      setGoals(mappedGoals);
+      setActivities(mappedActivities);
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+      addToast('error', 'Connection Error', 'Failed to sync with backend.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!userId) {
       navigate('/auth');
       return;
     }
-
-    let isMounted = true;
-    const initializeData = async () => {
-      try {
-        setIsLoading(true);
-        // Fetch user data
-        const user = await api.fetchUser(userId);
-        if (!isMounted) return;
-        setUserData(user);
-        
-        // Fetch specific data
-        const fetchedGoals = await api.fetchGoals(userId);
-        const mappedGoals = fetchedGoals.map((g: any) => ({
-          id: g.id,
-          name: g.title,
-          target: Number(g.targetAmount) / 1000000, 
-          saved: Number(g.currentBalance) / 1000000,
-          color: g.colorHex || '#C0FF00',
-          icon: Target,
-          createdAt: new Date(g.createdAt).toLocaleDateString(),
-          deadline: new Date(g.deadline).toLocaleDateString(),
-          frequency: 'Flexible',
-          lastDeposit: 'Recent',
-          status: g.status.toLowerCase(),
-          yieldEarned: 0,
-        }));
-
-        const fetchedActivities = await api.fetchActivity(userId);
-        const mappedActivities = fetchedActivities.map((a: any) => ({
-          id: a.id,
-          type: a.type === 'GOAL_CREATED' ? 'goal_creation' : a.type.toLowerCase(),
-          name: a.type === 'DEPOSIT' ? 'Vault Fast-Track' : a.type === 'WITHDRAWAL' ? 'Goal Reached' : 'Initialized Vault',
-          amount: a.amount ? Number(a.amount) / 1000000 : 0,
-          date: new Date(a.timestamp).toLocaleDateString(),
-          status: 'completed',
-          goal: fetchedGoals.find((g: any) => g.onChainGoalId === a.onChainGoalId)?.title || 'Vault',
-        }));
-        
-        if (isMounted) {
-          setGoals(mappedGoals);
-          setActivities(mappedActivities);
-        }
-      } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-        addToast('error', 'Connection Error', 'Failed to sync with backend.');
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
     initializeData();
-    return () => { isMounted = false; }
   }, [userId, navigate]);
+
+  const handleDepositClick = (goal: any) => {
+    setSelectedGoal(goal);
+    setIsDepositOpen(true);
+  };
+
+  const handleDepositSuccess = (amount: number) => {
+    addToast('success', 'Deposit Confirmed', `Successfully saved $${amount} into ${selectedGoal.name}`);
+    initializeData(); 
+  };
 
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -111,13 +122,14 @@ const DashboardPage: React.FC = () => {
 
   const totalSaved = goals.reduce((acc, g) => acc + g.saved, 0);
   const activeGoalsCount = goals.filter(g => g.status === 'active').length;
+  const totalTarget = goals.reduce((acc, g) => acc + g.target, 0);
+  const averageProgress = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
 
   return (
     <DashboardLayout>
       <div className="relative min-h-[calc(100vh-64px)] w-full overflow-hidden">
         <SparkEffect />
 
-        {/* Global Toast Container */}
         <div className="fixed top-24 right-8 z-[200] flex flex-col gap-4">
           <AnimatePresence>
             {toasts.map((toast) => (
@@ -130,10 +142,10 @@ const DashboardPage: React.FC = () => {
           </AnimatePresence>
         </div>
 
-        {isLoading ? (
+        {isLoading && !goals.length ? (
           <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-4">
-             <Loader2 className="animate-spin text-[#00F0FF]" size={48} />
-             <p className="text-sm font-black text-white italic uppercase tracking-widest">Syncing with Backend Vaults...</p>
+             <Loader2 className="animate-spin text-[#C0FF00]" size={48} />
+             <p className="text-sm font-black text-white italic uppercase tracking-widest text-[#C0FF00]">Syncing with Backend Vaults...</p>
           </div>
         ) : (
           <motion.div
@@ -151,13 +163,18 @@ const DashboardPage: React.FC = () => {
                 <p className="text-sm text-gray-400 font-medium tracking-tight">Your PennyStalker vault strategy is loaded securely.</p>
               </motion.div>
 
-              {/* Test Simulation Controls */}
               <motion.div variants={itemVariants} className="flex items-center gap-3">
+                <Button 
+                  onClick={() => setIsFundingOpen(true)}
+                  className="bg-white/5 border border-white/10 text-white hover:bg-white/10 uppercase text-[0.65rem] font-black tracking-widest gap-2 h-9 px-4 rounded-xl"
+                >
+                  <Wallet size={14} className="text-[#C0FF00]" /> Fund Account
+                </Button>
                 <button
                   onClick={() => setIsAdminMode(!isAdminMode)}
-                  className={`px-4 py-2 rounded-xl text-[0.65rem] font-black uppercase tracking-widest border transition-all ${isAdminMode ? 'bg-[#C0FF00]/10 border-[#C0FF00] text-[#C0FF00]' : 'bg-white/5 border-white/10 text-gray-500'}`}
+                  className={`px-4 py-2 rounded-xl text-[0.65rem] font-black uppercase tracking-widest border h-9 transition-all ${isAdminMode ? 'bg-[#C0FF00]/10 border-[#C0FF00] text-[#C0FF00]' : 'bg-white/5 border-white/10 text-gray-500'}`}
                 >
-                  {isAdminMode ? 'Show Real Data' : 'Simulate Empty State'}
+                  {isAdminMode ? 'Show Real Data' : 'Simulate Empty'}
                 </button>
               </motion.div>
             </div>
@@ -168,17 +185,16 @@ const DashboardPage: React.FC = () => {
                 isEmpty={isEmpty} 
                 totalSaved={totalSaved}
                 activeGoals={activeGoalsCount}
+                averageProgress={averageProgress}
               />
             </motion.div>
 
             {/* Main Content Area */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-              {/* Chart Section */}
               <motion.div variants={itemVariants} className="xl:col-span-8">
                 <SavingsEvolution isEmpty={isEmpty} activities={isEmpty ? [] : activities} />
               </motion.div>
 
-              {/* Activity Section */}
               <motion.div variants={itemVariants} className="xl:col-span-4">
                 <RecentActivity activities={isEmpty ? [] : activities} />
               </motion.div>
@@ -186,10 +202,30 @@ const DashboardPage: React.FC = () => {
 
             {/* Goals Section */}
             <motion.div variants={itemVariants}>
-              <GoalsOverview goals={isEmpty ? [] : goals} />
+              <GoalsOverview 
+                goals={isEmpty ? [] : goals} 
+                onDepositClick={handleDepositClick}
+              />
             </motion.div>
           </motion.div>
         )}
+
+        {/* Access Layer Modals */}
+        {selectedGoal && (
+          <DepositModal 
+            isOpen={isDepositOpen}
+            onClose={() => setIsDepositOpen(false)}
+            goal={selectedGoal}
+            onSuccess={handleDepositSuccess}
+          />
+        )}
+
+        <FundAccountModal 
+          isOpen={isFundingOpen}
+          onClose={() => setIsFundingOpen(false)}
+          userId={userId || ''}
+          onFunded={() => initializeData()}
+        />
 
         {/* Informational Banner for New Users */}
         {!isLoading && isEmpty && (
@@ -205,14 +241,14 @@ const DashboardPage: React.FC = () => {
               </div>
               <div className="space-y-1 text-center md:text-left">
                 <p className="text-lg font-black text-white italic uppercase tracking-tight">On-Chain Verification Required</p>
-                <p className="text-xs text-gray-500 font-medium max-w-md">To begin saving, initialize your first goal so the smart contract can allocate box storage for your deposits.</p>
+                <p className="text-xs text-gray-500 font-medium max-w-md">Initialize your goals and fund your custodial account with Testnet USDC to start moving assets into your vault.</p>
               </div>
             </div>
             <button
-              onClick={() => addToast('success', 'USDC Funding Initiated', 'Testnet USDC is being bridged to your wallet.')}
+              onClick={() => setIsFundingOpen(true)}
               className="bg-[#C0FF00] text-black px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-[0_0_30px_rgba(192,255,0,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2 relative z-10"
             >
-              <Zap size={16} fill="currentColor" /> Request Testnet USDC
+              <Zap size={16} fill="currentColor" /> Fund & Request USDC
             </button>
           </motion.div>
         )}
@@ -222,3 +258,19 @@ const DashboardPage: React.FC = () => {
 };
 
 export default DashboardPage;
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  children: React.ReactNode;
+}
+
+const Button = ({ children, onClick, className, type = "button", disabled = false, ...props }: ButtonProps) => (
+  <button 
+    type={type}
+    onClick={onClick}
+    disabled={disabled}
+    className={cn("transition-all duration-200 active:scale-95 disabled:opacity-50", className)}
+    {...props}
+  >
+    {children}
+  </button>
+);

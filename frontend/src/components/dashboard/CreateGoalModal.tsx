@@ -12,7 +12,17 @@ import {
   ShieldCheck,
   Calculator
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { api } from '../../lib/api';
+import { useWallet } from '@txnlab/use-wallet-react';
+import algosdk from 'algosdk';
+import { PennyStalkerClient, calcGoalMbr } from '../../lib/contracts/PennyStalkerClient';
+
+const ALGOD_SERVER = import.meta.env.VITE_ALGOD_SERVER || 'https://testnet-api.algonode.cloud';
+const ALGOD_PORT = import.meta.env.VITE_ALGOD_PORT || '';
+const ALGOD_TOKEN = import.meta.env.VITE_ALGOD_TOKEN || '';
+const APP_ID = BigInt(import.meta.env.VITE_APP_ID || '0');
+
+const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT);
 
 interface CreateGoalModalProps {
   isOpen: boolean;
@@ -29,39 +39,101 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
 
   const calculateMbr = () => {
     if (!name) return;
-    // Simulated calculation based on PennyStalkerClient.ts logic
-    // Formula: 2500 + 400 * (41 + 2 + name_byte_len + 32)
-    const nameLen = name.length;
-    const mbr = 2500 + 400 * (41 + 2 + nameLen + 32);
-    setMbrPreview((mbr / 1000000).toFixed(4));
+    const mbr = calcGoalMbr(name);
+    setMbrPreview((Number(mbr) / 1000000).toFixed(4));
+    return mbr;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { activeWallet, activeAddress, transactionSigner } = useWallet();
+  const userId = localStorage.getItem('ps_user_id');
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) return;
+
     setStep('processing');
-    
-    // Simulated Smart Contract Execution
-    setTimeout(() => {
-      const newGoal = {
-        id: Date.now(),
-        name,
-        target: parseFloat(target),
-        saved: 0,
-        color: ['#C0FF00', '#00F0FF', '#BF5AF2', '#FF9F0A'][Math.floor(Math.random() * 4)],
-        icon: Target,
-        createdAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        deadline: new Date(deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        frequency: 'Monthly',
-        status: 'active',
-        yieldEarned: 0
-      };
+    setError(null);
+
+    try {
+      const targetAmount = parseFloat(target);
+      const targetMicroUsdc = BigInt(targetAmount * 1_000_000); // 6 decimals
+      const deadlineUnixSec = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
+      const mbrMicroAlgo = calculateMbr()!;
+
+      // Determine wallet type (we can fetch this or use local state, but usually activeAddress implies Pera)
+      const userRes = await api.fetchUser(userId);
+      const isCustodial = userRes?.walletType === 'CUSTODIAL';
+
+      let onChainGoalId: number;
+
+      if (isCustodial) {
+        // Backend handles custodial creation
+        const res = await api.createGoalCustodial({
+          userId,
+          title: name,
+          targetAmount,
+          deadline,
+          category: 'general'
+        });
+        onChainGoalId = res.onChainGoalId;
+      } else {
+        // Frontend signs for Pera
+        if (!activeWallet || !activeAddress) throw new Error("No active wallet detected");
+        
+        const client = new PennyStalkerClient({
+          algodClient,
+          appId: APP_ID,
+          sender: {
+            addr: activeAddress,
+            signer: transactionSigner
+          }
+        });
+
+        console.log("🏗️ Creating goal on-chain via Pera...");
+        const resultId = await client.createGoal({
+          name,
+          targetAmountMicroUsdc: targetMicroUsdc,
+          deadlineUnixSec,
+          mbrMicroAlgo
+        });
+        onChainGoalId = Number(resultId);
+
+        // Sync metadata to backend
+        await api.createGoalMetadata({
+          userId,
+          onChainGoalId,
+          title: name,
+          targetAmount,
+          deadline,
+          category: 'general'
+        });
+      }
+
       setStep('success');
       setTimeout(() => {
-        onSuccess(newGoal);
+        // We trigger success and let the parent refresh
+        onSuccess({
+            id: onChainGoalId,
+            name,
+            target: targetAmount,
+            saved: 0,
+            color: '#C0FF00',
+            icon: Target,
+            createdAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+            deadline: new Date(deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+            status: 'active'
+        });
         handleClose();
       }, 1500);
-    }, 3000);
+
+    } catch (err: any) {
+      console.error("Goal creation error:", err);
+      setError(err.message || "Failed to initialize on-chain vault.");
+      setStep('form');
+    }
   };
+
+  const [error, setError] = useState<string | null>(null);
 
   const handleClose = () => {
     setStep('form');
@@ -181,9 +253,16 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
                       </div>
                     )}
 
+                    {error && (
+                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold">
+                            {error}
+                        </div>
+                    )}
+
                     <button 
                       type="submit"
-                      className="w-full py-5 bg-[#C0FF00] text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_0_40px_rgba(192,255,0,0.2)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2"
+                      disabled={!name || !target || !deadline}
+                      className="w-full py-5 bg-[#C0FF00] text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_0_40px_rgba(192,255,0,0.2)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale"
                     >
                       Create On-Chain Vault <ArrowRight size={18} strokeWidth={3} />
                     </button>

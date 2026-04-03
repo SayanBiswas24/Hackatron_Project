@@ -4,7 +4,8 @@ import { Clock, TrendingUp, Calendar, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface Goal {
-   id: number;
+   id: string | number;
+   onChainGoalId: number;
    name: string;
    target: number;
    saved: number;
@@ -12,9 +13,9 @@ export interface Goal {
    icon: LucideIcon;
    createdAt: string;
    deadline: string;
-   frequency: 'Weekly' | 'Monthly' | 'One-time';
+   frequency: string;
    lastDeposit: string;
-   status: 'active' | 'completed' | 'paused';
+   status: string;
    yieldEarned: number;
 }
 
@@ -24,7 +25,7 @@ interface GoalCardProps {
 }
 
 const GoalCard: React.FC<GoalCardProps> = ({ goal, onClick }) => {
-   const progress = Math.min(100, Math.round((goal.saved / goal.target) * 100));
+   const progress = Math.min(100, Math.round((Number(goal.saved) / Number(goal.target)) * 100));
 
    return (
       <Card
@@ -67,14 +68,14 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onClick }) => {
                   <div>
                      <p className="text-[0.65rem] text-gray-500 font-black uppercase tracking-widest mb-1.5 opacity-60">Current Progress</p>
                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-2xl font-black tracking-tighter text-white">₹{goal.saved.toLocaleString()}</span>
-                        <span className="text-[0.7rem] text-gray-600 font-bold uppercase tracking-widest">/ ₹{goal.target.toLocaleString()}</span>
+                        <span className="text-2xl font-black tracking-tighter text-white">₹{(Number(goal.saved) / 1000000).toLocaleString()}</span>
+                        <span className="text-[0.7rem] text-gray-600 font-bold uppercase tracking-widest">/ ₹{(Number(goal.target) / 1000000).toLocaleString()}</span>
                      </div>
                   </div>
                   <div className="text-right">
                      <span className="text-xl font-black text-white tracking-tighter">{progress}%</span>
                      <div className="flex items-center gap-1 justify-end text-[0.65rem] text-green-400 font-bold uppercase">
-                        <TrendingUp size={10} /> +₹{goal.yieldEarned.toLocaleString()} Yield
+                        <TrendingUp size={10} /> +₹{(Number(goal.yieldEarned) / 1000000).toLocaleString()} Yield
                      </div>
                   </div>
                </div>

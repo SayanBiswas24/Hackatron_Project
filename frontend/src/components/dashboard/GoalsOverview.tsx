@@ -1,55 +1,10 @@
 import React from 'react';
 import { Card, CardContent } from '../ui/card';
-import { Target, TrendingUp, Zap, Clock } from 'lucide-react';
+import { Target, Clock } from 'lucide-react';
 import type { Goal } from './GoalCard';
 import EmptyState from './EmptyState';
 
-const initialGoals: Goal[] = [
-  {
-    id: 1,
-    name: 'New Car',
-    target: 1500000,
-    saved: 975000,
-    color: '#C0FF00',
-    icon: Target,
-    createdAt: '2 weeks ago',
-    deadline: 'Aug 2026',
-    frequency: 'Monthly',
-    lastDeposit: '2 days ago',
-    status: 'active',
-    yieldEarned: 24500
-  },
-  {
-    id: 2,
-    name: 'Emergency Fund',
-    target: 200000,
-    saved: 180000,
-    color: '#00F0FF',
-    icon: Zap,
-    createdAt: '1 month ago',
-    deadline: 'Dec 2026',
-    frequency: 'Monthly',
-    lastDeposit: 'Yesterday',
-    status: 'active',
-    yieldEarned: 12800
-  },
-  {
-    id: 3,
-    name: 'Trip to Ladakh',
-    target: 50000,
-    saved: 7500,
-    color: '#BF5AF2',
-    icon: TrendingUp,
-    createdAt: '3 days ago',
-    deadline: 'May 2026',
-    frequency: 'Weekly',
-    lastDeposit: '2 hours ago',
-    status: 'active',
-    yieldEarned: 450
-  },
-];
-
-const GoalsOverview: React.FC<{ goals?: Goal[] }> = ({ goals = initialGoals }) => {
+const GoalsOverview: React.FC<{ goals: Goal[], onDepositClick: (goal: Goal) => void }> = ({ goals, onDepositClick }) => {
   const isEmpty = goals.length === 0;
 
   return (
@@ -81,7 +36,7 @@ const GoalsOverview: React.FC<{ goals?: Goal[] }> = ({ goals = initialGoals }) =
                       <goal.icon size={22} strokeWidth={1.5} style={{ color: goal.color }} />
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-[0.65rem] font-black text-[#C0FF00] tracking-tighter mb-1 uppercase">+₹{goal.yieldEarned.toLocaleString()} Yield</span>
+                      <span className="text-[0.65rem] font-black text-[#C0FF00] tracking-tighter mb-1 uppercase">+₹{((goal.yieldEarned ?? 0) / 1000000).toLocaleString()} Yield</span>
                       <span className="text-[0.6rem] font-bold text-gray-500 flex items-center gap-1 uppercase">
                         <Clock size={10} /> {goal.deadline}
                       </span>
@@ -92,7 +47,7 @@ const GoalsOverview: React.FC<{ goals?: Goal[] }> = ({ goals = initialGoals }) =
                     <h3 className="text-xl font-black text-white tracking-tight mb-1 group-hover:translate-x-1 transition-transform">{goal.name}</h3>
                     <div className="flex justify-between items-end mb-2">
                       <span className="text-xs text-gray-400 font-medium">Progress <span className="font-bold text-white">{progress}%</span></span>
-                      <span className="text-[0.65rem] text-gray-500 font-bold uppercase tracking-wider">₹{goal.saved.toLocaleString()} <span className="text-gray-700">/ ₹{goal.target.toLocaleString()}</span></span>
+                      <span className="text-[0.65rem] text-gray-500 font-bold uppercase tracking-wider">₹{(goal.saved / 1000000).toLocaleString()} <span className="text-gray-700">/ ₹{(goal.target / 1000000).toLocaleString()}</span></span>
                     </div>
                     <div className="h-1.5 w-full bg-white/5 border border-white/10 rounded-full overflow-hidden">
                       <div
@@ -102,7 +57,10 @@ const GoalsOverview: React.FC<{ goals?: Goal[] }> = ({ goals = initialGoals }) =
                     </div>
                   </div>
 
-                  <button className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-[0.65rem] font-black text-gray-400 hover:bg-[#C0FF00] hover:text-black hover:border-transparent transition-all uppercase tracking-widest shadow-xl">
+                  <button 
+                    onClick={() => onDepositClick(goal)}
+                    className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-[0.65rem] font-black text-gray-400 hover:bg-[#C0FF00] hover:text-black hover:border-transparent transition-all uppercase tracking-widest shadow-xl"
+                  >
                     Quick Deposit
                   </button>
                 </CardContent>
