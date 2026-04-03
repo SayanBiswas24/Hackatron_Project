@@ -61,6 +61,7 @@ const StatCard = ({
 interface StatsGridProps {
   totalSaved: number;
   activeGoals: number;
+  walletBalance: number;
   averageProgress?: number;
   isEmpty?: boolean;
 }
@@ -68,16 +69,20 @@ interface StatsGridProps {
 const StatsGrid: React.FC<StatsGridProps> = ({
   totalSaved,
   activeGoals,
+  walletBalance,
   averageProgress = 0,
   isEmpty = false
 }) => {
+  const EXCHANGE_RATE = 88.50; // Mock rate for display
+  const walletInInr = walletBalance * EXCHANGE_RATE;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatCard
-        title="Total USDC Saved"
-        value={isEmpty ? "$0.00" : `$${totalSaved.toLocaleString()}`}
+        title="Total Vault Assets"
+        value={`₹${Math.round(totalSaved * EXCHANGE_RATE).toLocaleString()}`}
         icon={DollarSign}
-        trendValue={isEmpty ? undefined : "Live"}
+        trend={`${totalSaved.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`}
         isPositive={true}
         color="#C0FF00"
         glowColor="lime"
@@ -100,10 +105,10 @@ const StatsGrid: React.FC<StatsGridProps> = ({
         glowColor="purple"
       />
       <StatCard
-        title="Protocol Security"
-        value={isEmpty ? "None" : "Maximum"}
+        title="Wallet Balance"
+        value={`₹${Math.round(walletInInr).toLocaleString()}`}
         icon={ShieldCheck}
-        trend={isEmpty ? "Awaiting first deposit" : "On-Chain Enforced"}
+        trend={`${walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`}
         color="#FF3B30"
         glowColor="red"
       />

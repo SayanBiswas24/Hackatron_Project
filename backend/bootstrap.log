@@ -1,0 +1,24 @@
+🚀 Starting LocalNet Bootstrap for PennyStalker...
+
+📡 Getting LocalNet Dispenser Account via algokit...
+✅ Connected to LocalNet. Genesis account (Dispenser): 2224QLWDRUHYX7NNXXSQJO6FAVAF6PL4H4FMKXBVJP6OMOKJGCAO5H4M2E
+◇ injecting env (7) from ../.env // tip: ⌘ enable debugging { debug: true }
+♻️ Using existing platform account from .env: PHT4XBWADQKM4J72QATIAIWH5YWUJYUFAE5IDY7ELVFDZUNNJNYHD7XIRI
+📡 Ensuring Platform Account is funded on LocalNet...
+DEBUG: Funding address: PHT4XBWADQKM4J72QATIAIWH5YWUJYUFAE5IDY7ELVFDZUNNJNYHD7XIRI
+Sending 100000000 µALGO from 2224QLWDRUHYX7NNXXSQJO6FAVAF6PL4H4FMKXBVJP6OMOKJGCAO5H4M2E to PHT4XBWADQKM4J72QATIAIWH5YWUJYUFAE5IDY7ELVFDZUNNJNYHD7XIRI via transaction M72UHVF7MNM4IHSMQHV3DC6WUXU3JDZDGT6UU23223DY3QARVVNQ
+💰 Platform account funded. Current Balance: 199996000 microAlgos
+🪙 Creating Mock USDC Asset...
+DEBUG: Asset Creator address: PHT4XBWADQKM4J72QATIAIWH5YWUJYUFAE5IDY7ELVFDZUNNJNYHD7XIRI
+✅ Mock USDC Created! Asset ID: 1130
+🛠️ Deploying PennyStalker contract...
+🎯 PennyStalker Deployed! App ID: 1131
+📡 Funding PennyStalker App Address (6MS3BY2VHFBCIOSWAZ5OVX2VNBJUV3PROL56FLGTDEPU7NHUHJ6RLKC4Q4) for USDC opt-in...
+Sending 500000 µALGO from 2224QLWDRUHYX7NNXXSQJO6FAVAF6PL4H4FMKXBVJP6OMOKJGCAO5H4M2E to 6MS3BY2VHFBCIOSWAZ5OVX2VNBJUV3PROL56FLGTDEPU7NHUHJ6RLKC4Q4 via transaction FJE444XJZDEX5EGKESVFTCCVON3LDXBVJ3COHP3H7E5EE6UR6VDA
+🔗 Opting contract into USDC...
+✅ Contract opted into USDC
+📝 Backend .env updated.
+📝 Frontend .env updated.
+
+✨ LocalNet Bootstrap Complete! ✨
+Please restart your frontend and backend servers to apply changes.

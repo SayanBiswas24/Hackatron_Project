@@ -108,14 +108,23 @@ async function bootstrap() {
     const appId = await client.deploy(usdcAssetId);
     console.log(`🎯 PennyStalker Deployed! App ID: ${appId}`);
 
-    // 6. Opt App into USDC
+    // 6. Fund the Application Account (MBR for Asset Opt-in)
+    const appAddress = algosdk.getApplicationAddress(Number(appId)).toString();
+    console.log(`📡 Funding PennyStalker App Address (${appAddress}) for USDC opt-in...`);
+    await algokit.transferAlgos({
+      from: genesisWrapper,
+      to: appAddress,
+      amount: algokit.algos(0.5), // 0.5 ALGO is more than enough for setup
+    }, algodClient);
+
+    // 7. Opt App into USDC
     console.log('🔗 Opting contract into USDC...');
     await client.optIntoUsdc(usdcAssetId);
     console.log('✅ Contract opted into USDC');
 
-    // 7. Update .env files
-    const envPath = path.join(__dirname, '../../.env');
-    const frontendEnvPath = path.join(__dirname, '../../../frontend/.env');
+    // 8. Update .env files
+    const envPath = path.join(__dirname, '../.env');
+    const frontendEnvPath = path.join(__dirname, '../../frontend/.env');
 
     const envUpdates = {
         VITE_APP_ID: appId.toString(),

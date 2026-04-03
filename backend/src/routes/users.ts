@@ -64,8 +64,8 @@ router.post('/signup', async (req, res) => {
       onboardingComplete: user.onboardingComplete
     });
   } catch (error: any) {
-    console.error('Signup error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Signup error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 
@@ -91,9 +91,9 @@ router.post('/signin', async (req, res) => {
       onboardingComplete: user.onboardingComplete,
       walletType: user.walletType
     });
-  } catch (error) {
-    console.error('Signin error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    console.error('Signin error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 

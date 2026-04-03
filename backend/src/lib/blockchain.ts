@@ -1,5 +1,7 @@
+import 'dotenv/config';
 import algosdk from 'algosdk';
 import { decrypt } from './crypto';
+import { prisma } from './prisma';
 import { PennyStalkerClient } from './contracts/PennyStalkerClient';
 
 // Network connection settings - dynamically loaded from environment
@@ -7,11 +9,13 @@ const ALGOD_TOKEN = process.env.ALGOD_TOKEN || '';
 const ALGOD_SERVER = process.env.ALGOD_SERVER || 'https://testnet-api.algonode.cloud';
 const ALGOD_PORT = process.env.ALGOD_PORT || '';
 
+console.log(`📡 Algorand Client connecting to: ${ALGOD_SERVER}:${ALGOD_PORT}`);
 export const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT);
 
 // The IDs are now dynamic - set these in your .env based on the active network
 export const APP_ID = BigInt(process.env.VITE_APP_ID || '0');
 export const USDC_ASSET_ID = BigInt(process.env.VITE_USDC_ASSET_ID || '10458941'); // Defaults to Circle USDC on Testnet
+console.log(`🏦 Asset IDs: APP_ID=${APP_ID}, USDC_ASSET_ID=${USDC_ASSET_ID}`);
 
 /**
  * Creates a PennyStalker contract client for a specific user.
@@ -40,7 +44,10 @@ export function getCustodialClient(encryptedMnemonic: string): PennyStalkerClien
  */
 export function getPlatformClient(): PennyStalkerClient {
   const mnemonic = process.env.PLATFORM_MNEMONIC;
-  if (!mnemonic) throw new Error('PLATFORM_MNEMONIC not set');
+  if (!mnemonic) {
+    console.error('❌ PLATFORM_MNEMONIC is missing from environment variables');
+    throw new Error('PLATFORM_MNEMONIC not set');
+  }
 
   const account = algosdk.mnemonicToSecretKey(mnemonic);
   const signer = algosdk.makeBasicAccountTransactionSigner(account);
@@ -60,7 +67,7 @@ export function getPlatformClient(): PennyStalkerClient {
  */
 export async function getUsdcBalance(address: string): Promise<bigint> {
   try {
-    const info = await algodClient.accountAssetInformation(address, Number(USDC_ASSET_ID)).do();
+    const info = await algodClient.accountAssetInformation(address, Number(USDC_ASSET_ID)).do() as any;
     return BigInt(info['asset-holding'].amount);
   } catch (e: any) {
     if (e.status === 404) return 0n; // Not opted in or literally 0
@@ -72,8 +79,14 @@ export async function getUsdcBalance(address: string): Promise<bigint> {
  * Utility to check if a custodial account has enough ALGO for operations.
  */
 export async function getAlgoBalance(address: string): Promise<bigint> {
-  const info = await algodClient.accountInformation(address).do();
-  return BigInt(info.amount);
+  try {
+    const info = await algodClient.accountInformation(address).do();
+    return BigInt(info.amount);
+  } catch (error: any) {
+    if (error.status === 404) return 0n; // Uninitialized account
+    console.error(`❌ Algod error fetching balance for ${address}:`, error.message);
+    throw error;
+  }
 }
 
 /**
@@ -145,4 +158,59 @@ export async function airdropAlgo(toAddress: string): Promise<string> {
   await algosdk.waitForConfirmation(algodClient, txId, waitRounds);
 
   return txId;
+}
+
+/**
+ * Ensures a custodial address has at least the minimum required ALGO.
+ * If the balance is too low, it performs a platform airdrop.
+ */
+export async function ensureMinimumAlgo(address: string, minimumMicroAlgo: bigint = 300_000n): Promise<void> {
+  try {
+    const currentBalance = await getAlgoBalance(address);
+    if (currentBalance < minimumMicroAlgo) {
+      console.log(`🏦 Balance ${currentBalance} for address ${address} is below threshold ${minimumMicroAlgo}. Airdropping...`);
+      await airdropAlgo(address);
+    }
+  } catch (error: any) {
+    // If account doesn't exist yet (404), definitely airdrop
+    if (error.status === 404 || error.message?.includes('404')) {
+      console.log(`🆕 Uninitialized account ${address} detected. Airdropping initial ALGO...`);
+      await airdropAlgo(address);
+    } else {
+      throw error;
+    }
+  }
+}
+
+/**
+ * Transfers USDC from a user's custodial wallet back to the platform account.
+ * Used for simulating off-ramp withdrawals to a bank account.
+ */
+export async function withdrawUsdc(userId: string, amountUsdc: number): Promise<string> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || user.walletType !== 'CUSTODIAL' || !user.encryptedMnemonic) {
+    throw new Error('Valid custodial wallet not found for withdrawal');
+  }
+
+  const userAccount = algosdk.mnemonicToSecretKey(decrypt(user.encryptedMnemonic));
+  const platformMnemonic = process.env.PLATFORM_MNEMONIC;
+  if (!platformMnemonic) throw new Error('PLATFORM_MNEMONIC not set');
+  const platformAccount = algosdk.mnemonicToSecretKey(platformMnemonic);
+
+  const params = await algodClient.getTransactionParams().do();
+  const amount = BigInt(amountUsdc * 1_000_000);
+
+  const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    sender: userAccount.addr.toString(),
+    receiver: platformAccount.addr.toString(),
+    assetIndex: Number(USDC_ASSET_ID),
+    amount,
+    suggestedParams: params,
+  });
+
+  const signedTxn = txn.signTxn(userAccount.sk);
+  const response = await algodClient.sendRawTransaction(signedTxn).do();
+  
+  await algosdk.waitForConfirmation(algodClient, response.txid, 4);
+  return response.txid;
 }

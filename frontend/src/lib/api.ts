@@ -8,19 +8,36 @@ export const api = {
     return res.json();
   },
 
-  async createGoal(data: any) {
+  async createGoalMetadata(data: any) {
     const res = await fetch(`${API_BASE_URL}/goals`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
     const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to create goal');
+    if (!res.ok) throw new Error(result.error || 'Failed to create goal metadata');
+    return result;
+  },
+
+  async syncGoals(userId: string) {
+    const res = await fetch(`${API_BASE_URL}/goals/sync/${userId}`);
+    if (!res.ok) throw new Error('Failed to sync goals');
+    return res.json();
+  },
+
+  async createGoalCustodial(data: any) {
+    const res = await fetch(`${API_BASE_URL}/goals/custodial`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Failed to create custodial goal');
     return result;
   },
 
   async depositCustodial(data: any) {
-    const res = await fetch(`${API_BASE_URL}/goals/deposit`, {
+    const res = await fetch(`${API_BASE_URL}/goals/deposit/custodial`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -55,8 +72,14 @@ export const api = {
 
   async fetchWalletBalance(userId: string) {
     const res = await fetch(`${API_BASE_URL}/wallet/balance/${userId}`);
-    if (!res.ok) throw new Error('Failed to fetch balance');
-    return res.json();
+
+    const result = await res.json(); // 👈 add this
+
+    if (!res.ok) {
+      throw new Error(result.error || 'Failed to fetch balance');
+    }
+
+    return result;
   },
 
   async faucetUsdc(userId: string) {
@@ -82,16 +105,52 @@ export const api = {
     return result;
   },
 
+  async withdrawUsdc(userId: string, amount: number) {
+    const res = await fetch(`${API_BASE_URL}/wallet/withdraw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, amount })
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Withdrawal simulation failed');
+    return result;
+  },
+
   // User / Auth
   async fetchUser(userId: string) {
-    const res = await fetch(`${API_BASE_URL}/auth/user/${userId}`);
+    const res = await fetch(`${API_BASE_URL}/users/${userId}`);
     if (!res.ok) throw new Error('Failed to fetch user profile');
     return res.json();
   },
 
   async fetchActivity(userId: string) {
-    const res = await fetch(`${API_BASE_URL}/auth/activity/${userId}`);
+    const res = await fetch(`${API_BASE_URL}/activity/${userId}`);
     if (!res.ok) throw new Error('Failed to fetch activity logs');
     return res.json();
-  }
+  },
+
+  // Auth
+  async signup(data: { fullName: string; email: string; password: string }): Promise<{ userId: string; onboardingComplete: boolean }> {
+    const res = await fetch(`${API_BASE_URL}/users/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Signup failed');
+    return result;
+  },
+
+  async signin(data: { email: string; password: string }): Promise<{ userId: string; onboardingComplete: boolean }> {
+    const res = await fetch(`${API_BASE_URL}/users/signin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Signin failed');
+    return result;
+  },
 };

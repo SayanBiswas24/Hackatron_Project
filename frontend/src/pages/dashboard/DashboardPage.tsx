@@ -32,6 +32,7 @@ const DashboardPage: React.FC = () => {
   
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
+  const [walletBalance, setWalletBalance] = useState<{ usdc: string; algo: string }>({ usdc: '0', algo: '0' });
   const [goals, setGoals] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const userId = localStorage.getItem('ps_user_id');
@@ -49,8 +50,12 @@ const DashboardPage: React.FC = () => {
     if (!userId) return;
     try {
       setIsLoading(true);
-      const user = await api.fetchUser(userId);
+      const [user, balance] = await Promise.all([
+        api.fetchUser(userId),
+        api.fetchWalletBalance(userId)
+      ]);
       setUserData(user);
+      setWalletBalance(balance);
       
       const fetchedGoals = await api.fetchGoals(userId);
       const mappedGoals = fetchedGoals.map((g: any) => ({
@@ -118,7 +123,7 @@ const DashboardPage: React.FC = () => {
     visible: { opacity: 1, y: 0 },
   };
 
-  const isEmpty = isAdminMode || (!isLoading && goals.length === 0);
+  const isEmpty = isAdminMode || (!isLoading && goals.length === 0 && activities.length === 0);
 
   const totalSaved = goals.reduce((acc, g) => acc + g.saved, 0);
   const activeGoalsCount = goals.filter(g => g.status === 'active').length;
@@ -126,7 +131,7 @@ const DashboardPage: React.FC = () => {
   const averageProgress = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
 
   return (
-    <DashboardLayout>
+    <DashboardLayout userData={userData}>
       <div className="relative min-h-[calc(100vh-64px)] w-full overflow-hidden">
         <SparkEffect />
 
@@ -183,9 +188,10 @@ const DashboardPage: React.FC = () => {
             <motion.div variants={itemVariants}>
               <StatsGrid 
                 isEmpty={isEmpty} 
-                totalSaved={totalSaved}
+                totalSaved={totalSaved / 1000000}
                 activeGoals={activeGoalsCount}
                 averageProgress={averageProgress}
+                walletBalance={Number(walletBalance.usdc) / 1000000}
               />
             </motion.div>
 
@@ -224,6 +230,7 @@ const DashboardPage: React.FC = () => {
           isOpen={isFundingOpen}
           onClose={() => setIsFundingOpen(false)}
           userId={userId || ''}
+          currentBalance={Number(walletBalance.usdc) / 1000000}
           onFunded={() => initializeData()}
         />
 

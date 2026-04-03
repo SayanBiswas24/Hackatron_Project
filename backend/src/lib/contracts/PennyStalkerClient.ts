@@ -200,6 +200,25 @@ export class PennyStalkerClient {
   }
 
   /**
+   * Idempotently ensures the user is opted into the application.
+   * If not already opted in, it performs the opt-in transaction.
+   */
+  async ensureAppOptIn(): Promise<void> {
+    try {
+      await this.algod.accountApplicationInformation(this.sender.addr, Number(this.appId)).do();
+    } catch (e: any) {
+      // Improved error detection for missing opt-in (404 status or specific error message)
+      if (e.status === 404 || e.response?.status === 404 || e.message?.includes('404')) {
+        console.log(`📡 Account ${this.sender.addr} has not yet opted into app ${this.appId}. Initiating...`);
+        await this.optInToApp();
+      } else {
+        console.error(`❌ Unexpected error checking opt-in for ${this.sender.addr}:`, e.message);
+        throw e;
+      }
+    }
+  }
+
+  /**
    * Creates a new savings goal for the calling user.
    * The platform pre-funds the user's wallet with ALGO to cover this MBR.
    *

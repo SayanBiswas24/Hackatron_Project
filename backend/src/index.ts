@@ -1,15 +1,19 @@
+import 'dotenv/config'; // ✅ BEST FIX
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+
 import userRoutes from './routes/users';
 import goalRoutes from './routes/goals';
 import activityRoutes from './routes/activity';
 import walletRoutes from './routes/wallet';
 
-dotenv.config();
+// Debug env
+console.log("DATABASE_URL:", process.env.DATABASE_URL);
+console.log("PORT:", process.env.PORT);
 
-// Standard BigInt JSON serialization fix
-(BigInt.prototype as any).toJSON = function() {
+// BigInt fix
+(BigInt.prototype as any).toJSON = function () {
   return this.toString();
 };
 
@@ -19,7 +23,6 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Routes
 app.use('/api/users', userRoutes);
 app.use('/api/goals', goalRoutes);
 app.use('/api/activity', activityRoutes);
@@ -30,5 +33,5 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Backend server is running on port ${port}`);
+  console.log(`Backend running on port ${port}`);
 });

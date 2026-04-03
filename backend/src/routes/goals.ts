@@ -1,6 +1,6 @@
 import express from 'express';
 import { prisma } from '../lib/prisma';
-import { getCustodialClient, getAlgoBalance, algodClient, APP_ID } from '../lib/blockchain';
+import { getCustodialClient, getAlgoBalance, algodClient, APP_ID, ensureMinimumAlgo } from '../lib/blockchain';
 import { calcGoalMbr } from '../lib/contracts/PennyStalkerClient';
 import algosdk from 'algosdk';
 
@@ -109,16 +109,20 @@ router.post('/custodial', async (req, res) => {
     // 1. Calculate required MBR for this goal name
     const mbrMicroAlgo = calcGoalMbr(title);
     
-    // 2. Check if account has enough ALGO for MBR + Fees
+    // 2. Check if account has enough ALGO for MBR + Fees (including potential opt-in)
     const balance = await getAlgoBalance(user.walletAddress!);
-    if (balance < mbrMicroAlgo + 5000n) { // Buffer for fees
+    const feeBuffer = 10_000n; // Increased to cover inner txns or opt-ins
+    if (balance < mbrMicroAlgo + feeBuffer) {
       return res.status(400).json({ 
         error: `Insufficient ALGO balance in vault. Required: ${(Number(mbrMicroAlgo) / 1e6).toFixed(4)} ALGO.` 
       });
     }
 
-    // 3. Perform on-chain creation
+    // 3. Perform on-chain creation (and ensure opt-in + funds)
     const client = getCustodialClient(user.encryptedMnemonic);
+    await ensureMinimumAlgo(user.walletAddress!);
+    await client.ensureAppOptIn();
+
     const deadlineUnix = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
     const targetMicroUsdc = BigInt(targetAmount) * 1_000_000n; // Assuming input is USDC
 
@@ -267,7 +271,9 @@ router.post('/deposit/custodial', async (req, res) => {
 
     console.log(`💰 Preparing custodial deposit for ${user.walletAddress}...`);
     
-    // Ensure the custodial account is opted into USDC
+    // Ensure the custodial account has funds and is opted into the app and USDC
+    await ensureMinimumAlgo(user.walletAddress!);
+    await client.ensureAppOptIn();
     await client.ensureAssetOptIn(usdcAssetId);
     
     // 2. Perform on-chain deposit
@@ -283,7 +289,7 @@ router.post('/deposit/custodial', async (req, res) => {
         transactionId: txId,
         userId,
         onChainGoalId: Number(onChainGoalId),
-        type: 'DEPOSIT',
+        type: 'deposit',
         amount: amountMicroUsdc
       }
     });

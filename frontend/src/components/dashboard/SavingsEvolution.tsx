@@ -58,6 +58,7 @@ const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, ac
     });
 
     // Backfill balance for months where no activity occurred
+    const EXCHANGE_RATE = 88.50; // Consistency with StatsGrid
     let lastKnownBalance = 0;
     chartData = initialData.map(d => {
       if (monthlyData[d.name] !== undefined) {
@@ -65,7 +66,7 @@ const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, ac
       }
       return {
         name: d.name,
-        value: lastKnownBalance / 1000000 // Convert to base units for display
+        value: lastKnownBalance * EXCHANGE_RATE // Convert to INR for display
       };
     });
   }
@@ -80,7 +81,7 @@ const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, ac
             </span>
           </CardTitle>
           <CardDescription className="text-xs text-gray-500 font-medium">
-            {isEmpty ? "Growth tracking will begin after your first deposit." : "Growth of your total savings across all vaults over time."}
+            {isEmpty ? "Growth tracking will begin after your first deposit." : "Growth of your total savings across all vaults over time (INR)."}
           </CardDescription>
         </div>
         {!isEmpty && (
@@ -96,20 +97,21 @@ const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, ac
           </div>
         )}
       </CardHeader>
-      <CardContent className="p-0 relative h-[350px]">
-        <div className="w-full h-full p-4 pt-0">
+      <CardContent className="p-0 relative h-[350px] min-h-[350px]">
+        <div className="w-full h-full p-4 pt-0 min-h-[350px]">
            {isMounted ? (
-             <ResponsiveContainer width="99%" height="100%">
-              <AreaChart 
-                data={chartData}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={isEmpty ? "#333" : "#C0FF00"} stopOpacity={isEmpty ? 0.1 : 0.3} />
-                    <stop offset="95%" stopColor={isEmpty ? "#333" : "#C0FF00"} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+             <div style={{ width: '100%', height: '350px', minHeight: '350px' }}>
+               <ResponsiveContainer width="100%" height={350}>
+                <AreaChart 
+                  data={chartData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={isEmpty ? "#333" : "#C0FF00"} stopOpacity={isEmpty ? 0.1 : 0.3} />
+                      <stop offset="95%" stopColor={isEmpty ? "#333" : "#C0FF00"} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                 <XAxis
                   dataKey="name"
@@ -122,8 +124,8 @@ const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, ac
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10, fontWeight: 700 }}
-                  tickFormatter={(value) => isEmpty ? `₹0` : `₹${Math.round(value)}`}
-                  domain={[0, isEmpty ? 100 : 'auto']}
+                  tickFormatter={(value) => `₹${Math.round(value).toLocaleString()}`}
+                  domain={[0, 'auto']}
                   dx={-0}
                 />
                 {!isEmpty && (
@@ -139,7 +141,7 @@ const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, ac
                     }}
                     labelStyle={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: 900, marginBottom: 4, textTransform: 'uppercase' }}
                     itemStyle={{ color: '#C0FF00', fontSize: 14, fontWeight: 900 }}
-                    formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Balance']}
+                    formatter={(value: any) => [`₹${Math.round(value).toLocaleString()}`, 'Total Savings']}
                   />
                 )}
                 <Area
@@ -152,8 +154,9 @@ const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, ac
                   animationDuration={2000}
                   isAnimationActive={!isEmpty}
                 />
-              </AreaChart>
-            </ResponsiveContainer>
+                </AreaChart>
+              </ResponsiveContainer>
+             </div>
            ) : (
              <div className="w-full h-full bg-white/5 animate-pulse rounded-xl" />
            )}

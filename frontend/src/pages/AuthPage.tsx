@@ -112,9 +112,9 @@ export default function AuthPage() {
     try {
       if (mode === 'signup') {
         if (password !== confirm) {
-           setError("Passwords do not match");
-           setIsLoading(false);
-           return;
+          setError("Passwords do not match");
+          setIsLoading(false);
+          return;
         }
 
         const res = await api.signup({
@@ -122,7 +122,7 @@ export default function AuthPage() {
           email,
           password
         });
-        
+
         localStorage.setItem('ps_user_id', res.userId);
         setSubmitted(true);
         // New users always go to onboarding
@@ -250,7 +250,7 @@ export default function AuthPage() {
                   </div>
 
                   {error && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold"
@@ -335,7 +335,7 @@ export default function AuthPage() {
                   </div>
 
                   {error && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold"

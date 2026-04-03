@@ -210,7 +210,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ goal, isOpen, onClose, onSu
 
                       <button 
                         type="submit"
-                        disabled={!amount || parseFloat(amount) <= 0}
+                        disabled={!amount || parseFloat(amount) <= 0 || parseFloat(amount) > balance}
                         className="w-full py-5 bg-[#C0FF00] text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_0_40px_rgba(192,255,0,0.2)] hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-2"
                       >
                         Confirm Deposit <ArrowUpRight size={18} strokeWidth={3} />
@@ -267,6 +267,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ goal, isOpen, onClose, onSu
         isOpen={isFundingOpen}
         onClose={() => setIsFundingOpen(false)}
         userId={userId || ''}
+        currentBalance={balance}
         onFunded={() => fetchBalance()}
       />
     </>

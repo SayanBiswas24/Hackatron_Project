@@ -1,7 +1,16 @@
 import React from 'react';
 import { Search, Bell, User, ChevronDown, Wallet } from 'lucide-react';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  userData?: any;
+}
+
+const Header: React.FC<HeaderProps> = ({ userData }) => {
+  const truncAddress = (addr: string) => {
+    if (!addr) return 'Unconnected';
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
   return (
     <header className="h-16 flex items-center justify-between px-8 border-b border-white/10 bg-[#0E1411] backdrop-blur-md">
       <div className="flex-1 flex items-center gap-4">
@@ -19,7 +28,7 @@ const Header: React.FC = () => {
         {/* Network Status */}
         <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-[0.65rem] font-bold text-green-400 uppercase tracking-wider">Mainnet Beta</span>
+          <span className="text-[0.65rem] font-bold text-green-400 uppercase tracking-wider">LocalNet Beta</span>
         </div>
 
         {/* Notifications */}
@@ -31,10 +40,14 @@ const Header: React.FC = () => {
         {/* User Profile */}
         <div className="flex items-center gap-3 pl-6 border-l border-white/10 group cursor-pointer">
           <div className="flex flex-col items-end">
-            <span className="text-sm font-bold text-white group-hover:text-[#C0FF00] transition-colors">Satoshi Nakamoto</span>
+            <span className="text-sm font-bold text-white group-hover:text-[#C0FF00] transition-colors">
+              {userData?.displayName || 'Satoshi'}
+            </span>
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/10">
               <Wallet size={10} className="text-[#C0FF00]" />
-              <span className="text-[0.65rem] font-medium text-gray-400">ALGO...X42B</span>
+              <span className="text-[0.65rem] font-medium text-gray-400">
+                {truncAddress(userData?.walletAddress)}
+              </span>
             </div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#C0FF00]/40 to-[#C0FF00]/10 border border-white/10 flex items-center justify-center font-bold text-black border-white/20 group-hover:scale-105 transition-transform overflow-hidden shadow-xl">
