@@ -20,9 +20,18 @@ export const api = {
   },
 
   async syncGoals(userId: string) {
-    const res = await fetch(`${API_BASE_URL}/goals/sync/${userId}`);
-    if (!res.ok) throw new Error('Failed to sync goals');
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/goals/sync/${userId}`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      // Fallback: return goals from DB without on-chain sync
+      try {
+        const res = await fetch(`${API_BASE_URL}/goals/${userId}`);
+        if (!res.ok) return [];
+        return res.json();
+      } catch { return []; }
+    }
   },
 
   async createGoalCustodial(data: any) {
@@ -44,6 +53,17 @@ export const api = {
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.error || 'Failed to deposit');
+    return result;
+  },
+
+  async updateAutopay(data: any) {
+    const res = await fetch(`${API_BASE_URL}/goals/autopay`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Failed to update autopay');
     return result;
   },
 
@@ -71,15 +91,16 @@ export const api = {
   },
 
   async fetchWalletBalance(userId: string) {
-    const res = await fetch(`${API_BASE_URL}/wallet/balance/${userId}`);
-
-    const result = await res.json(); // 👈 add this
-
-    if (!res.ok) {
-      throw new Error(result.error || 'Failed to fetch balance');
+    try {
+      const res = await fetch(`${API_BASE_URL}/wallet/balance/${userId}`);
+      if (!res.ok) {
+        // No wallet set up yet — return safe zero balance
+        return { usdc: '0', algo: '0', address: null };
+      }
+      return res.json();
+    } catch {
+      return { usdc: '0', algo: '0', address: null };
     }
-
-    return result;
   },
 
   async faucetUsdc(userId: string) {

@@ -34,8 +34,8 @@ const GoalsPage: React.FC = () => {
         id: g.id,
         onChainGoalId: g.onChainGoalId,
         name: g.title,
-        target: Number(g.targetAmount),
-        saved: Number(g.currentBalance),
+        target: Number(g.targetAmount) / 1_000_000,
+        saved: Number(g.currentBalance) / 1_000_000,
         color: g.colorHex || '#C0FF00',
         icon: Target, // Default icon
         createdAt: new Date(g.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),

@@ -50,6 +50,14 @@ model GoalMetadata {
   deadline        DateTime 
   status          String   @default("ACTIVE") 
 
+  // Autopay Configuration
+  autopayEnabled   Boolean   @default(false)
+  autopayAmount    BigInt?   // micro-USDC
+  nextAutopayAt    DateTime? // Schedule for the monthly deduction
+  lastAutopayStatus String?   // 'SUCCESS', 'FAILED', 'SKIPPED'
+  
+  lastAutopayAt    DateTime? // Timestamp of the last successful autopay
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

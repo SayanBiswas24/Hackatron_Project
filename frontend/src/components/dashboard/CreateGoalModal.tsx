@@ -36,6 +36,8 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
   const [target, setTarget] = useState('');
   const [deadline, setDeadline] = useState('');
   const [mbrPreview, setMbrPreview] = useState<string | null>(null);
+  const [autopayEnabled, setAutopayEnabled] = useState(false);
+  const [autopayAmount, setAutopayAmount] = useState('');
 
   const calculateMbr = () => {
     if (!name) return;
@@ -73,7 +75,9 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
           title: name,
           targetAmount,
           deadline,
-          category: 'general'
+          category: 'general',
+          autopayEnabled,
+          autopayAmount: autopayEnabled ? parseFloat(autopayAmount) : null
         });
         onChainGoalId = res.onChainGoalId;
       } else {
@@ -105,7 +109,9 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
           title: name,
           targetAmount,
           deadline,
-          category: 'general'
+          category: 'general',
+          autopayEnabled,
+          autopayAmount: autopayEnabled ? parseFloat(autopayAmount) : null
         });
       }
 
@@ -252,6 +258,57 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
                          </div>
                       </div>
                     )}
+
+                    {/* Autopay Toggle */}
+                    <div className="space-y-4 p-5 rounded-3xl bg-white/5 border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-xl ${autopayEnabled ? 'bg-[#C0FF00]/20 text-[#C0FF00]' : 'bg-white/5 text-gray-500'}`}>
+                            <Zap size={18} fill={autopayEnabled ? "currentColor" : "none"} />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-black text-white uppercase tracking-wider">Monthly Autopay</span>
+                            <span className="text-[0.6rem] text-gray-500 font-medium">Automate your monthly targets</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setAutopayEnabled(!autopayEnabled)}
+                          className={`w-12 h-6 rounded-full transition-all relative ${autopayEnabled ? 'bg-[#C0FF00]' : 'bg-white/10'}`}
+                        >
+                          <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-all ${autopayEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+
+                      <AnimatePresence>
+                        {autopayEnabled && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden space-y-3 pt-3 border-t border-white/5"
+                          >
+                            <div className="space-y-2">
+                              <label className="text-[0.55rem] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Monthly Deduction Amount (USDC)</label>
+                              <div className="relative">
+                                <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+                                <input 
+                                  required={autopayEnabled}
+                                  type="number"
+                                  value={autopayAmount}
+                                  onChange={(e) => setAutopayAmount(e.target.value)}
+                                  placeholder="Amount to save monthly"
+                                  className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-xs text-white focus:border-[#C0FF00]/50 outline-none transition-all"
+                                />
+                              </div>
+                              <p className="text-[0.5rem] text-gray-600 font-medium px-1 italic">
+                                * This will be deducted automatically from your PennyStalker vault every 30 days.
+                              </p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
 
                     {error && (
                         <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold">

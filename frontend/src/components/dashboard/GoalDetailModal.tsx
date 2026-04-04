@@ -74,21 +74,21 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                         <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
                            <span className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest mb-1 block">Total Balance</span>
                            <div className="flex items-baseline gap-1">
-                              <span className="text-xl font-black text-white tracking-tighter">₹{(Number(goal.saved) / 1000000).toLocaleString()}</span>
+                              <span className="text-xl font-black text-white tracking-tighter">${Number(goal.saved).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                               <span className="text-[0.65rem] text-neon-lime font-bold">LIVE</span>
                            </div>
                         </div>
                         <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
                            <span className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest mb-1 block">Target Amount</span>
                            <div className="flex items-baseline gap-1">
-                              <span className="text-xl font-black text-white tracking-tighter">₹{(Number(goal.target) / 1000000).toLocaleString()}</span>
+                              <span className="text-xl font-black text-white tracking-tighter">${Number(goal.target).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                               <span className="text-[0.65rem] text-gray-600 font-bold">GOAL</span>
                            </div>
                         </div>
                         <div className="p-4 rounded-2xl bg-[#C0FF00]/5 border border-[#C0FF00]/10">
                            <span className="text-[0.6rem] font-black text-[#C0FF00] uppercase tracking-widest mb-1 block">Yield Generated</span>
                            <div className="flex items-baseline gap-1">
-                              <span className="text-xl font-black text-[#C0FF00] tracking-tighter">+₹{(Number(goal.yieldEarned) / 1000000).toLocaleString()}</span>
+                              <span className="text-xl font-black text-[#C0FF00] tracking-tighter">+${Number(goal.yieldEarned).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                               <span className="text-[0.65rem] text-[#C0FF00]/60 font-bold">APY 8.4%</span>
                            </div>
                         </div>
