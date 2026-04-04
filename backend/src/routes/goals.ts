@@ -109,7 +109,10 @@ router.post('/custodial', async (req, res) => {
     // 1. Calculate required MBR for this goal name
     const mbrMicroAlgo = calcGoalMbr(title);
     
-    // 2. Check if account has enough ALGO for MBR + Fees (including potential opt-in)
+    // 2. Ensure account has minimum ALGO (Airdrop if needed)
+    await ensureMinimumAlgo(user.walletAddress!);
+
+    // 3. Check if account has enough ALGO for MBR + Fees (including potential opt-in)
     const balance = await getAlgoBalance(user.walletAddress!);
     const feeBuffer = 10_000n; // Increased to cover inner txns or opt-ins
     if (balance < mbrMicroAlgo + feeBuffer) {
@@ -118,9 +121,8 @@ router.post('/custodial', async (req, res) => {
       });
     }
 
-    // 3. Perform on-chain creation (and ensure opt-in + funds)
+    // 4. Perform on-chain creation (and ensure opt-in)
     const client = getCustodialClient(user.encryptedMnemonic);
-    await ensureMinimumAlgo(user.walletAddress!);
     await client.ensureAppOptIn();
 
     const deadlineUnix = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
