@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Wallet, 
@@ -14,6 +14,8 @@ import DashboardLayout from '../../components/dashboard/DashboardLayout';
 import { SparkEffect } from '../../components/ui/spark-effect';
 import { Card, CardContent } from '../../components/ui/card';
 import { cn } from '../../lib/utils';
+import { api } from '../../lib/api';
+import { Loader2 } from 'lucide-react';
 
 interface SettingToggleProps {
   enabled: boolean;
@@ -87,6 +89,34 @@ const SettingsPage: React.FC = () => {
   const [autoCompounding, setAutoCompounding] = useState(true);
   const [blindSigning, setBlindSigning] = useState(false);
   const [mfa, setMfa] = useState(true);
+  const [userData, setUserData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const userId = localStorage.getItem('ps_user_id');
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!userId) return;
+      try {
+        setIsLoading(true);
+        const data = await api.fetchUser(userId);
+        setUserData(data);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchUserData();
+  }, [userId]);
+
+  const getInitials = (name: string) => {
+    if (!name) return 'UN';
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -235,15 +265,24 @@ const SettingsPage: React.FC = () => {
                 label="Account Profile" 
                 description="Update your display name, vault identifier, and account email."
               >
-                <div className="flex items-center gap-4">
-                   <div className="text-right">
-                      <p className="text-sm font-black text-white tracking-tight uppercase italic">Satoshi Nakamoto</p>
-                      <p className="text-[0.6rem] text-gray-500 font-bold uppercase tracking-tighter">satoshi@algorand.io</p>
-                   </div>
-                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#C0FF00] to-[#00F0FF] p-1 shadow-[0_0_15px_rgba(192,255,0,0.3)]">
-                      <div className="w-full h-full bg-[#0A0F0D] rounded-lg flex items-center justify-center text-white font-black text-xs">SN</div>
-                   </div>
-                </div>
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 size={16} className="animate-spin text-[#C0FF00]" />
+                    <span className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest">Decrypting Identity...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                        <p className="text-sm font-black text-white tracking-tight uppercase italic">{userData?.fullName || 'Anonymous User'}</p>
+                        <p className="text-[0.6rem] text-gray-500 font-bold uppercase tracking-tighter">{userData?.email || 'N/A'}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#C0FF00] to-[#00F0FF] p-1 shadow-[0_0_15px_rgba(192,255,0,0.3)]">
+                        <div className="w-full h-full bg-[#0A0F0D] rounded-lg flex items-center justify-center text-white font-black text-xs">
+                          {userData ? getInitials(userData.fullName) : '??'}
+                        </div>
+                    </div>
+                  </div>
+                )}
               </SettingItem>
               <SettingItem 
                 label="Danger Zone" 

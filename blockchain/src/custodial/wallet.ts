@@ -8,14 +8,14 @@ export interface CustodialAccountData {
 }
 
 /**
- * Silently generates a new Algorand Account.
+  Generates a new Algorand Account for the user.
  * Encrypts the secret key using AES-256-GCM.
  * The backend should store this returned payload securely against the user's DB record.
  */
 export function generateCustodialAccount(): CustodialAccountData {
     const account = algosdk.generateAccount();
     const encryptedPayload = encryptSecretKey(account.sk);
-    
+
     return {
         address: account.addr.toString(),
         encryptedPayload
@@ -29,7 +29,7 @@ export function restoreCustodialAccount(payload: EncryptedKeyPayload): algosdk.A
     const sk = decryptSecretKey(payload);
     const publicKey = sk.slice(32);
     const addrString = algosdk.encodeAddress(publicKey);
-    
+
     return {
         addr: algosdk.Address.fromString(addrString),
         sk
@@ -49,7 +49,7 @@ export async function optInToUSDC(userAccount: algosdk.Account): Promise<string>
             signer: algosdk.makeBasicAccountTransactionSigner(userAccount)
         }
     });
-    
+
     return result.txIds[0];
 }
 

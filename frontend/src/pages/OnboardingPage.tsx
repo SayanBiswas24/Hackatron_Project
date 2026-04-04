@@ -128,7 +128,7 @@ const OnboardingPage: React.FC = () => {
         setSyncMessage("Initiating Vault Funding...");
         // Backend handles custodial opt-ins (it has the keys) 
         // which now includes airdrop logic.
-        await api.optin(userId!);
+        await api.optIn(userId!);
         
         setSyncMessage("Finalizing Smart Contract Opt-ins...");
         // Wait a small bit for UI to show the final step
@@ -521,7 +521,7 @@ const OnboardingPage: React.FC = () => {
 
               <button
                 onClick={() => navigate('/dashboard')}
-                className="group w-full md:w-96 py-6 bg-gradient-to-r from-[#C0FF00] to-[#00F0FF] text-black font-black text-xl uppercase tracking-[0.2em] rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_60px_rgba(192,255,0,0.4)] flex items-center justify-center gap-4 mt-8"
+                className="group w-full md:w-96 py-6 mx-auto bg-gradient-to-r from-[#C0FF00] to-[#00F0FF] text-black font-black text-xl uppercase tracking-[0.2em] rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_60px_rgba(192,255,0,0.4)] flex items-center justify-center gap-4 mt-8"
               >
                 Enter Dashboard <ArrowRight size={28} strokeWidth={3} className="group-hover:translate-x-2 transition-transform" />
               </button>
