@@ -89,8 +89,10 @@ const SettingsPage: React.FC = () => {
   const [autoCompounding, setAutoCompounding] = useState(true);
   const [blindSigning, setBlindSigning] = useState(false);
   const [mfa, setMfa] = useState(true);
+  const [governanceEnabled, setGovernanceEnabled] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const userId = localStorage.getItem('ps_user_id');
 
   useEffect(() => {
@@ -100,6 +102,7 @@ const SettingsPage: React.FC = () => {
         setIsLoading(true);
         const data = await api.fetchUser(userId);
         setUserData(data);
+        setGovernanceEnabled(data.governanceEnabled || false);
       } catch (error) {
         console.error("Error fetching user data:", error);
       } finally {
@@ -108,6 +111,19 @@ const SettingsPage: React.FC = () => {
     };
     fetchUserData();
   }, [userId]);
+
+  const handleSave = async () => {
+    if (!userId) return;
+    try {
+      setIsSaving(true);
+      await api.updateUser(userId, { governanceEnabled });
+      // In a real app we'd show a success toast here
+    } catch (error) {
+      console.error("Error updating settings:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const getInitials = (name: string) => {
     if (!name) return 'UN';
@@ -216,6 +232,12 @@ const SettingsPage: React.FC = () => {
                 <SettingToggle enabled={autoCompounding} onChange={setAutoCompounding} />
               </SettingItem>
               <SettingItem 
+                label="Algorand Governance Staking" 
+                description="Enlist your vault funds for the Algorand Governance period to earn 5% APY rewards."
+              >
+                <SettingToggle enabled={governanceEnabled} onChange={setGovernanceEnabled} />
+              </SettingItem>
+              <SettingItem 
                 label="Default Saving Frequency" 
                 description="Pre-selected recurring deposit schedule for all new savings targets."
               >
@@ -300,8 +322,13 @@ const SettingsPage: React.FC = () => {
             variants={itemVariants}
             className="flex justify-center pt-4"
           >
-            <button className="px-12 py-5 bg-[#C0FF00] hover:brightness-110 text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_0_40px_rgba(192,255,0,0.3)] transition-all active:scale-95 flex items-center gap-3">
-               <Check size={20} strokeWidth={4} /> Update All Protocols
+            <button 
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-12 py-5 bg-[#C0FF00] hover:brightness-110 text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_0_40px_rgba(192,255,0,0.3)] transition-all active:scale-95 flex items-center gap-3 disabled:opacity-50"
+            >
+               {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Check size={20} strokeWidth={4} />}
+               {isSaving ? 'Synchronizing Opt-ins...' : 'Update All Protocols'}
             </button>
           </motion.div>
         </motion.div>

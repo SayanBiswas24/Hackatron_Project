@@ -18,7 +18,7 @@ const router = express.Router();
 // POST /api/wallet/setup - Handle one-time wallet setup during onboarding
 router.post('/setup', async (req, res) => {
   try {
-    const { userId, type, mnemonic, walletAddress } = req.body;
+    const { userId, type, mnemonic, walletAddress, governanceEnabled = false } = req.body;
 
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
@@ -70,7 +70,8 @@ router.post('/setup', async (req, res) => {
         walletAddress: finalAddress,
         walletType: type,
         encryptedMnemonic,
-        onboardingComplete: true
+        onboardingComplete: true,
+        governanceEnabled: Boolean(governanceEnabled)
       }
     });
 

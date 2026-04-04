@@ -144,6 +144,17 @@ export const api = {
     return res.json();
   },
 
+  async updateUser(userId: string, data: { displayName?: string; themePreference?: string; governanceEnabled?: boolean }) {
+    const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Failed to update profile');
+    return result;
+  },
+
   async fetchActivity(userId: string) {
     const res = await fetch(`${API_BASE_URL}/activity/${userId}`);
     if (!res.ok) throw new Error('Failed to fetch activity logs');

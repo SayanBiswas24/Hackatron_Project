@@ -290,3 +290,84 @@ PORT: 4000
     at getUsdcBalance (/home/sayan/Programs/Hackatron/backend/src/lib/blockchain.ts:71:41)
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
     at async <anonymous> (/home/sayan/Programs/Hackatron/backend/src/routes/wallet.ts:164:27)
+5:15:41 AM [tsx] change in ./src/routes/wallet.ts Restarting...
+c◇ injecting env (0) from .env // tip: ⌘ override existing { override: true }
+📡 Algorand Client connecting to: http://localhost:4001
+🏦 Asset IDs: APP_ID=1131, USDC_ASSET_ID=1130
+DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pennystalker?schema=public
+PORT: 4000
+🚀 PennyStalker Backend running at http://localhost:4000
+🗓️ Checking for due autopays...
+✅ No due autopays found.
+5:23:34 AM [tsx] change in ./src/routes/users.ts Restarting...
+c◇ injecting env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+📡 Algorand Client connecting to: http://localhost:4001
+🏦 Asset IDs: APP_ID=1131, USDC_ASSET_ID=1130
+DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pennystalker?schema=public
+PORT: 4000
+🚀 PennyStalker Backend running at http://localhost:4000
+🗓️ Checking for due autopays...
+✅ No due autopays found.
+5:24:07 AM [tsx] change in ./src/routes/users.ts Restarting...
+c◇ injecting env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+📡 Algorand Client connecting to: http://localhost:4001
+🏦 Asset IDs: APP_ID=1131, USDC_ASSET_ID=1130
+DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pennystalker?schema=public
+PORT: 4000
+🚀 PennyStalker Backend running at http://localhost:4000
+🗓️ Checking for due autopays...
+✅ No due autopays found.
+📥 Fetching balance for user: 416d064c-9267-4576-a094-df0e9b0c4bd6
+✅ Wallet found: 6SLRBGPFBDYHMNKDOCUDDYPDKNN5FYHJ7UT7YL2QYK4ZF65GBPD22YXZBM
+🔥 Blockchain Error: TypeError: Cannot read properties of undefined (reading 'amount')
+    at getUsdcBalance (/home/sayan/Programs/Hackatron/backend/src/lib/blockchain.ts:71:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/home/sayan/Programs/Hackatron/backend/src/routes/wallet.ts:165:27)
+📥 Fetching balance for user: 416d064c-9267-4576-a094-df0e9b0c4bd6
+✅ Wallet found: 6SLRBGPFBDYHMNKDOCUDDYPDKNN5FYHJ7UT7YL2QYK4ZF65GBPD22YXZBM
+🔥 Blockchain Error: TypeError: Cannot read properties of undefined (reading 'amount')
+    at getUsdcBalance (/home/sayan/Programs/Hackatron/backend/src/lib/blockchain.ts:71:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/home/sayan/Programs/Hackatron/backend/src/routes/wallet.ts:165:27)
+📥 Fetching balance for user: 416d064c-9267-4576-a094-df0e9b0c4bd6
+✅ Wallet found: 6SLRBGPFBDYHMNKDOCUDDYPDKNN5FYHJ7UT7YL2QYK4ZF65GBPD22YXZBM
+🔥 Blockchain Error: TypeError: Cannot read properties of undefined (reading 'amount')
+    at getUsdcBalance (/home/sayan/Programs/Hackatron/backend/src/lib/blockchain.ts:71:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/home/sayan/Programs/Hackatron/backend/src/routes/wallet.ts:165:27)
+📥 Fetching balance for user: 416d064c-9267-4576-a094-df0e9b0c4bd6
+✅ Wallet found: 6SLRBGPFBDYHMNKDOCUDDYPDKNN5FYHJ7UT7YL2QYK4ZF65GBPD22YXZBM
+🔥 Blockchain Error: TypeError: Cannot read properties of undefined (reading 'amount')
+    at getUsdcBalance (/home/sayan/Programs/Hackatron/backend/src/lib/blockchain.ts:71:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/home/sayan/Programs/Hackatron/backend/src/routes/wallet.ts:165:27)
+🎁 Initiating one-time faucet airdrop for P4CNJUMRBRDDTJMGPYVJRSLIUKJIVPQBGHG2NXS5LFVBLFLKRKGYWPHIOQ...
+💸 Sending 0.5 ALGO to P4CNJUMRBRDDTJMGPYVJRSLIUKJIVPQBGHG2NXS5LFVBLFLKRKGYWPHIOQ. TxID: 5VTZVOO7PHDUIQYYA376WXIKKK64K7HXSVMGZISE4UJCNAMUYECA
+🔗 Opting user P4CNJUMRBRDDTJMGPYVJRSLIUKJIVPQBGHG2NXS5LFVBLFLKRKGYWPHIOQ into App and USDC...
+🪙 Opting user into USDC (Asset: 1130)...
+📡 Opting in P4CNJUMRBRDDTJMGPYVJRSLIUKJIVPQBGHG2NXS5LFVBLFLKRKGYWPHIOQ to asset 1130...
+🛡️ Platform initializing USDC opt-in for App...
+📥 Fetching balance for user: 9f06eecd-0b2f-4358-8e6f-cf7c7bfd12c8
+✅ Wallet found: P4CNJUMRBRDDTJMGPYVJRSLIUKJIVPQBGHG2NXS5LFVBLFLKRKGYWPHIOQ
+🔥 Blockchain Error: TypeError: Cannot read properties of undefined (reading 'amount')
+    at getUsdcBalance (/home/sayan/Programs/Hackatron/backend/src/lib/blockchain.ts:71:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/home/sayan/Programs/Hackatron/backend/src/routes/wallet.ts:165:27)
+📥 Fetching balance for user: 9f06eecd-0b2f-4358-8e6f-cf7c7bfd12c8
+✅ Wallet found: P4CNJUMRBRDDTJMGPYVJRSLIUKJIVPQBGHG2NXS5LFVBLFLKRKGYWPHIOQ
+🔥 Blockchain Error: TypeError: Cannot read properties of undefined (reading 'amount')
+    at getUsdcBalance (/home/sayan/Programs/Hackatron/backend/src/lib/blockchain.ts:71:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/home/sayan/Programs/Hackatron/backend/src/routes/wallet.ts:165:27)
+📥 Fetching balance for user: 9f06eecd-0b2f-4358-8e6f-cf7c7bfd12c8
+✅ Wallet found: P4CNJUMRBRDDTJMGPYVJRSLIUKJIVPQBGHG2NXS5LFVBLFLKRKGYWPHIOQ
+🔥 Blockchain Error: TypeError: Cannot read properties of undefined (reading 'amount')
+    at getUsdcBalance (/home/sayan/Programs/Hackatron/backend/src/lib/blockchain.ts:71:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/home/sayan/Programs/Hackatron/backend/src/routes/wallet.ts:165:27)
+📥 Fetching balance for user: 9f06eecd-0b2f-4358-8e6f-cf7c7bfd12c8
+✅ Wallet found: P4CNJUMRBRDDTJMGPYVJRSLIUKJIVPQBGHG2NXS5LFVBLFLKRKGYWPHIOQ
+🔥 Blockchain Error: TypeError: Cannot read properties of undefined (reading 'amount')
+    at getUsdcBalance (/home/sayan/Programs/Hackatron/backend/src/lib/blockchain.ts:71:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/home/sayan/Programs/Hackatron/backend/src/routes/wallet.ts:165:27)

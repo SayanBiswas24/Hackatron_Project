@@ -42,6 +42,7 @@ const OnboardingPage: React.FC = () => {
   const [mnemonic, setMnemonic] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [hasConfirmedMnemonic, setHasConfirmedMnemonic] = useState(false);
+  const [isGovernanceEnabled, setIsGovernanceEnabled] = useState(false);
   const [importMnemonic, setImportMnemonic] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +91,8 @@ const OnboardingPage: React.FC = () => {
     try {
       const res = await api.setupWallet({
         userId: userId!,
-        type: 'CUSTODIAL'
+        type: 'CUSTODIAL',
+        governanceEnabled: isGovernanceEnabled
       });
       setMnemonic(res.mnemonic);
       setStep('custodial-create');
@@ -109,7 +111,8 @@ const OnboardingPage: React.FC = () => {
       await api.setupWallet({
         userId: userId!,
         type: 'CUSTODIAL',
-        mnemonic: importMnemonic.trim()
+        mnemonic: importMnemonic.trim(),
+        governanceEnabled: isGovernanceEnabled
       });
       setStep('syncing');
       performSync('CUSTODIAL');
@@ -332,6 +335,28 @@ const OnboardingPage: React.FC = () => {
               <div className="text-center space-y-4">
                 <h2 className="text-4xl font-black text-white uppercase italic tracking-tight">Silent Vault <span className="text-[#00F0FF] not-italic">Setup</span></h2>
                 <p className="text-gray-400">Generate a new secure vault or import your existing one.</p>
+              </div>
+
+              {/* Algorand Governance Toggle */}
+              <div className="p-5 rounded-3xl bg-[#00F0FF]/5 border border-[#00F0FF]/20 flex items-start gap-4 transition-all hover:bg-[#00F0FF]/10">
+                <div className="mt-1">
+                  <input 
+                    type="checkbox" 
+                    id="governance-optin"
+                    checked={isGovernanceEnabled}
+                    onChange={(e) => setIsGovernanceEnabled(e.target.checked)}
+                    className="w-6 h-6 rounded-md border-gray-600 bg-gray-800/50 text-[#00F0FF] focus:ring-[#00F0FF] focus:ring-offset-gray-900 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="governance-optin" className="text-white font-black uppercase italic tracking-wide cursor-pointer block cursor-pointer">
+                    Enlist in Algorand Governance <span className="text-[#00F0FF] text-xs align-middle bg-[#00F0FF]/20 px-2 py-0.5 rounded-full ml-2 not-italic tracking-widest">Recommended</span>
+                  </label>
+                  <p className="text-gray-400 text-xs mt-1 leading-relaxed">
+                    By default, your unstaked vault funds earn a baseline benefit of up to <strong className="text-white">0.5% APY</strong>. 
+                    Enabling Algorand Governance allows your funds to be securely staked to earn up to <strong className="text-[#00F0FF]">5% APY</strong>. This process is fully non-custodial and risk-free.
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-6">

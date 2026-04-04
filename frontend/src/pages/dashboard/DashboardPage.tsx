@@ -172,7 +172,17 @@ const DashboardPage: React.FC = () => {
                 <h1 className="text-4xl font-black tracking-tight text-white italic uppercase">
                   Hello, <span className="text-[#C0FF00] not-italic">{userData?.displayName || 'Satoshi'}</span>
                 </h1>
-                <p className="text-sm text-gray-400 font-medium tracking-tight">Your PennyStalker vault strategy is loaded securely.</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-gray-400 font-medium tracking-tight">Your PennyStalker vault strategy is loaded securely.</p>
+                  <div className={cn(
+                    "px-2 py-0.5 rounded-md text-[0.6rem] font-black uppercase tracking-widest border transition-all",
+                    userData?.governanceEnabled 
+                      ? "bg-[#C0FF00]/10 border-[#C0FF00]/20 text-[#C0FF00]" 
+                      : "bg-white/5 border-white/10 text-gray-500"
+                  )}>
+                    {userData?.governanceEnabled ? "Staking Active: 5.0% APY" : "Standard Vault: 0.5% APY"}
+                  </div>
+                </div>
               </motion.div>
 
               <motion.div variants={itemVariants} className="flex items-center gap-3">
