@@ -1,31 +1,69 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, DollarSign, Clock, History, AlertTriangle, CheckCircle, ArrowUpRight, Zap, Target } from 'lucide-react';
+import { 
+  X, 
+  Calendar, 
+  DollarSign, 
+  Clock, 
+  History, 
+  AlertTriangle, 
+  CheckCircle, 
+  ArrowUpRight, 
+  Zap, 
+  Target,
+  RefreshCw,
+  Loader2
+} from 'lucide-react';
 import type { Goal } from './GoalCard';
 import DepositModal from './DepositModal';
 import WithdrawalModal from './WithdrawalModal';
 import AutomationModal from './AutomationModal';
 import { useCurrency } from '../../context/CurrencyContext';
+import { api } from '../../lib/api';
+import { cn } from '../../lib/utils';
 
 interface GoalDetailModalProps {
    goal: Goal | null;
    isOpen: boolean;
    onClose: () => void;
+   onRefresh?: () => void;
 }
 
-const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose }) => {
+const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose, onRefresh }) => {
    const { formatINR, formatUSDC } = useCurrency();
    const [isDepositModalOpen, setIsDepositModalOpen] = React.useState(false);
    const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = React.useState(false);
    const [isAutomationModalOpen, setIsAutomationModalOpen] = React.useState(false);
+   
+   const [activities, setActivities] = React.useState<any[]>([]);
+   const [loadingActivity, setLoadingActivity] = React.useState(false);
+   const userId = localStorage.getItem('ps_user_id');
+
+   const fetchActivity = async () => {
+      if (!userId || !goal) return;
+      try {
+         setLoadingActivity(true);
+         const data = await api.fetchGoalActivity(userId, goal.onChainGoalId);
+         setActivities(data);
+      } catch (err) {
+         console.error('Failed to fetch activities:', err);
+      } finally {
+         setLoadingActivity(false);
+      }
+   };
+
+   React.useEffect(() => {
+      if (isOpen && goal) {
+         fetchActivity();
+      }
+   }, [isOpen, goal?.id]);
 
    if (!goal) return null;
 
    const progress = Math.min(100, Math.round((Number(goal.saved) / Number(goal.target)) * 100));
 
-   const savedUsdc = Number(goal.saved) / 1000000;
-   const targetUsdc = Number(goal.target) / 1000000;
-   const yieldUsdc = Number(goal.yieldEarned) / 1000000;
+   const savedUsdc = Number(goal.saved);
+   const targetUsdc = Number(goal.target);
    const remainingUsdc = Math.max(0, targetUsdc - savedUsdc);
 
    return (
@@ -72,12 +110,12 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                         className="p-2 rounded-full hover:bg-white/5 text-gray-400 hover:text-white transition-all"
                      >
                         <X size={20} />
-                     </button>
+                      </button>
                   </div>
 
                   <div className="p-8 space-y-8">
                      {/* Hero Stats */}
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
                            <span className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest mb-1 block leading-none">Total Balance</span>
                            <div className="flex flex-col">
@@ -96,16 +134,6 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                                  <span className="text-[0.65rem] text-gray-600 font-bold">GOAL</span>
                               </div>
                               <span className="text-[0.55rem] text-gray-600 font-bold uppercase tracking-widest mt-0.5">≈ {formatUSDC(targetUsdc)}</span>
-                           </div>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-[#C0FF00]/5 border border-[#C0FF00]/10">
-                           <span className="text-[0.6rem] font-black text-[#C0FF00] uppercase tracking-widest mb-1 block leading-none">Yield Generated</span>
-                           <div className="flex flex-col">
-                              <div className="flex items-baseline gap-1 mt-1">
-                                 <span className="text-xl font-black text-[#C0FF00] tracking-tighter">+{formatINR(yieldUsdc)}</span>
-                                 <span className="text-[0.65rem] text-[#C0FF00]/60 font-bold">APY 8.4%</span>
-                              </div>
-                              <span className="text-[0.55rem] text-[#C0FF00]/40 font-bold uppercase tracking-widest mt-0.5">≈ {formatUSDC(yieldUsdc)}</span>
                            </div>
                         </div>
                      </div>
@@ -137,11 +165,31 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                                     <History size={18} />
                                  </div>
                                  <div className="">
-                                    <p className="text-[0.65rem] text-gray-500 font-black uppercase tracking-widest">Last Deposit</p>
-                                    <p className="text-sm font-bold text-white">{goal.lastDeposit}</p>
+                                    <p className="text-[0.65rem] text-gray-500 font-black uppercase tracking-widest">Vault Activity</p>
+                                    <p className="text-sm font-bold text-white">{activities.length} Recorded Traces</p>
                                  </div>
                               </div>
                            </div>
+
+                           {/* Incentive Status */}
+                           {goal.consecutiveMonths > 0 && (
+                             <div className="p-5 rounded-2xl bg-[#C0FF00]/5 border border-[#C0FF00]/20 space-y-3">
+                               <div className="flex justify-between items-center">
+                                 <div className="flex items-center gap-2 text-[#C0FF00]">
+                                   <Zap size={18} fill="currentColor" />
+                                   <span className="text-xs font-black uppercase tracking-widest">Consistency Bonus Active</span>
+                                 </div>
+                                 <span className="text-[0.6rem] font-bold text-[#C0FF00]/60 uppercase">{goal.consecutiveMonths} MO STREAK</span>
+                               </div>
+                               <div className="flex items-baseline gap-2">
+                                 <span className="text-3xl font-black text-white tracking-tighter">+{Math.min(4.0, 0.5 * goal.consecutiveMonths).toFixed(1)}%</span>
+                                 <span className="text-[0.6rem] text-gray-500 font-bold uppercase tracking-widest leading-none">Bonus on your next deposit</span>
+                               </div>
+                               <p className="text-[0.55rem] text-gray-500 italic leading-snug">
+                                 Your incentive grows by 0.5% every consecutive month you save. Max 4.0%.
+                               </p>
+                             </div>
+                           )}
                         </div>
 
                         <div className="space-y-4">
@@ -171,34 +219,59 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                            <h4 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
                               <History size={14} /> Recent Vault Transactions
                            </h4>
-                           <button className="text-[0.6rem] font-bold text-[#C0FF00] hover:underline uppercase">View Full History</button>
+                           <button onClick={fetchActivity} className="text-[0.65rem] font-bold text-[#C0FF00] hover:underline uppercase flex items-center gap-1 transition-all">
+                              <RefreshCw size={12} className={loadingActivity ? 'animate-spin' : ''} /> Sync
+                           </button>
                         </div>
-                        <div className="space-y-2">
-                           {[1, 2, 3].map((i) => {
-                              const mockAmountUsdc = 50 * i;
-                              return (
-                                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 group hover:border-white/10 transition-all">
-                                    <div className="flex items-center gap-3">
-                                       <div className="p-1.5 rounded bg-green-500/10 text-green-400">
-                                          <DollarSign size={14} />
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                           {loadingActivity ? (
+                              <div className="py-8 flex flex-col items-center gap-2">
+                                 <Loader2 className="animate-spin text-gray-600" size={24} />
+                                 <p className="text-[0.55rem] font-bold text-gray-600 uppercase tracking-widest">Fetching traces...</p>
+                              </div>
+                           ) : activities.length === 0 ? (
+                              <div className="py-8 text-center bg-white/[0.02] border border-white/5 rounded-xl">
+                                 <p className="text-[0.6rem] font-bold text-gray-600 uppercase tracking-widest italic">No transactions detected in this vault.</p>
+                              </div>
+                           ) : (
+                              activities.map((a: any) => {
+                                 const amountUsdc = Number(a.amount) / 1_000_000;
+                                 const isPositive = a.type === 'deposit' || a.type === 'incentive';
+                                 
+                                 return (
+                                    <div key={a.id} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 group hover:border-white/10 transition-all">
+                                       <div className="flex items-center gap-3">
+                                          <div className={cn(
+                                             "p-1.5 rounded",
+                                             a.type === 'deposit' ? "bg-[#C0FF00]/10 text-[#C0FF00]" : 
+                                             a.type === 'incentive' ? "bg-cyan-500/10 text-cyan-400" :
+                                             "bg-red-500/10 text-red-400"
+                                          )}>
+                                             {a.type === 'incentive' ? <Zap size={14} /> : <DollarSign size={14} />}
+                                          </div>
+                                          <div>
+                                             <p className="text-xs font-bold text-white capitalize">{a.type}</p>
+                                             <p className="text-[0.6rem] text-gray-500">{new Date(a.timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} • {new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                          </div>
                                        </div>
-                                       <div>
-                                          <p className="text-xs font-bold text-white">Deposit</p>
-                                          <p className="text-[0.6rem] text-gray-500">24 Mar 2026 • 11:24 AM</p>
-                                       </div>
-                                    </div>
-                                    <div className="flex flex-col items-end">
                                        <div className="flex flex-col items-end">
-                                          <p className="text-xs font-black text-white font-mono leading-none">+{formatINR(mockAmountUsdc)}</p>
-                                          <p className="text-[0.55rem] text-gray-600 font-bold uppercase tracking-widest mt-1">≈ {formatUSDC(mockAmountUsdc)}</p>
+                                          <div className="flex flex-col items-end">
+                                             <p className={cn(
+                                                "text-xs font-black font-mono leading-none",
+                                                isPositive ? "text-white" : "text-red-400"
+                                             )}>
+                                                {isPositive ? "+" : ""}{formatINR(amountUsdc)}
+                                             </p>
+                                             <p className="text-[0.55rem] text-gray-600 font-bold uppercase tracking-widest mt-1">≈ {formatUSDC(amountUsdc)}</p>
+                                          </div>
+                                          <p className="text-[0.55rem] text-gray-600 font-bold flex items-center gap-1 justify-end uppercase mt-1">
+                                             <CheckCircle size={10} className="text-[#C0FF00]" /> Confirmed
+                                          </p>
                                        </div>
-                                       <p className="text-[0.55rem] text-gray-600 font-bold flex items-center gap-1 justify-end uppercase mt-1">
-                                          <CheckCircle size={10} /> Confirmed
-                                       </p>
                                     </div>
-                                 </div>
-                              );
-                           })}
+                                 );
+                              })
+                           )}
                         </div>
                      </div>
 
@@ -233,6 +306,8 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                   onClose={() => setIsDepositModalOpen(false)}
                   onSuccess={(amount) => {
                      console.log(`Deposited ${amount} to ${goal.name}`);
+                     if (onRefresh) onRefresh();
+                     fetchActivity(); // Refresh history immediately
                   }}
                />
 
@@ -242,6 +317,8 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                   onClose={() => setIsWithdrawalModalOpen(false)}
                   onSuccess={() => {
                      console.log(`Withdrawn funds from ${goal.name}`);
+                     if (onRefresh) onRefresh();
+                     fetchActivity();
                   }}
                />
 

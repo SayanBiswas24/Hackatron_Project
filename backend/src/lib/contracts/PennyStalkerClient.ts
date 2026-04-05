@@ -240,6 +240,8 @@ export class PennyStalkerClient {
       signer: this.sender.signer,
     };
 
+    const nextId = await this.getNextGoalId(this.sender.addr);
+
     const atc = new AtomicTransactionComposer();
     atc.addMethodCall({
       appID: Number(this.appId),
@@ -248,16 +250,14 @@ export class PennyStalkerClient {
       sender: this.sender.addr,
       signer: this.sender.signer,
       suggestedParams: sp,
-      // Declare box access for the new goal. Box key = address bytes + goal ID uint64
+      // Declare box access for the new goal. Box name = 'g' + sender_addr + goalId
       boxes: [
         {
           appIndex: 0,
           name: new Uint8Array([
             ...new TextEncoder().encode('g'),
             ...algosdk.decodeAddress(this.sender.addr).publicKey,
-            // Box ID will be the next ID (0 for first goal) - we use a placeholder
-            // The contract handles the exact key; we just declare the access budget
-            0, 0, 0, 0, 0, 0, 0, 0,
+            ...algosdk.encodeUint64(nextId),
           ]),
         },
       ],

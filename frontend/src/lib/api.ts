@@ -161,6 +161,12 @@ export const api = {
     return res.json();
   },
 
+  async fetchGoalActivity(userId: string, onChainGoalId: number) {
+    const res = await fetch(`${API_BASE_URL}/activity/${userId}/${onChainGoalId}`);
+    if (!res.ok) throw new Error('Failed to fetch goal activity logs');
+    return res.json();
+  },
+
   // Auth
   async signup(data: { fullName: string; email: string; password: string }): Promise<{ userId: string; onboardingComplete: boolean }> {
     const res = await fetch(`${API_BASE_URL}/users/signup`, {

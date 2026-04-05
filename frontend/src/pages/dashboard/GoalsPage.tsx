@@ -45,6 +45,14 @@ const GoalsPage: React.FC = () => {
       }));
 
       setGoals(uiGoals);
+
+      // Also update selectedGoal if it exists to refresh modal data
+      if (selectedGoal) {
+        const updatedSelected = uiGoals.find(g => g.id === selectedGoal.id);
+        if (updatedSelected) {
+          setSelectedGoal(updatedSelected);
+        }
+      }
     } catch (err) {
       console.error("Failed to sync goals:", err);
     } finally {
@@ -166,6 +174,7 @@ const GoalsPage: React.FC = () => {
           goal={selectedGoal}
           isOpen={isDetailModalOpen}
           onClose={() => setIsDetailModalOpen(false)}
+          onRefresh={() => fetchAndSyncGoals()}
         />
 
         {/* Create Goal Modal */}

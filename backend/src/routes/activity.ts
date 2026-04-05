@@ -3,6 +3,29 @@ import { prisma } from '../lib/prisma';
 
 const router = express.Router();
 
+// GET /api/activity/:userId/:onChainGoalId - Fetches recent activities for a specific goal
+router.get('/:userId/:onChainGoalId', async (req, res) => {
+  try {
+    const { userId, onChainGoalId } = req.params;
+    const activities = await prisma.activityLog.findMany({
+      where: { 
+        userId,
+        onChainGoalId: parseInt(onChainGoalId)
+      },
+      orderBy: { timestamp: 'desc' },
+      take: 20
+    });
+
+    res.json(activities.map((a: any) => ({
+      ...a,
+      amount: a.amount ? a.amount.toString() : null
+    })));
+  } catch (error) {
+    console.error('Error fetching goal activities:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/activity/:userId - Fetches recent activities for a specific user ID
 router.get('/:userId', async (req, res) => {
   try {

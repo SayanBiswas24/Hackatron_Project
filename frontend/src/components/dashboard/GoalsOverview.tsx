@@ -3,8 +3,10 @@ import { Card, CardContent } from '../ui/card';
 import { Target, Clock } from 'lucide-react';
 import type { Goal } from './GoalCard';
 import EmptyState from './EmptyState';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const GoalsOverview: React.FC<{ goals: Goal[], onDepositClick: (goal: Goal) => void }> = ({ goals, onDepositClick }) => {
+  const { formatINR } = useCurrency();
   const isEmpty = goals.length === 0;
 
   return (
@@ -27,7 +29,7 @@ const GoalsOverview: React.FC<{ goals: Goal[], onDepositClick: (goal: Goal) => v
             return (
               <Card key={goal.id} className="relative overflow-hidden group border-white/5 bg-[#141C18] backdrop-blur-3xl hover:border-[#C0FF00]/20 transition-all duration-500">
                 <div
-                  className="absolute -right-8 -top-8 w-24 h-24 rounded-full blur-[60px] transition-all duration-700 opacity-10 group-hover:opacity-30"
+                  className="absolute -right-8 -top-8 w-24 h-24 rounded-full blur-[80px] transition-all duration-700 opacity-10 group-hover:opacity-30"
                   style={{ background: goal.color }}
                 />
                 <CardContent className="p-6 relative z-10 flex flex-col gap-6">
@@ -36,7 +38,7 @@ const GoalsOverview: React.FC<{ goals: Goal[], onDepositClick: (goal: Goal) => v
                       <goal.icon size={22} strokeWidth={1.5} style={{ color: goal.color }} />
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-[0.65rem] font-black text-[#C0FF00] tracking-tighter mb-1 uppercase">+₹{((goal.yieldEarned ?? 0) / 1000000).toLocaleString()} Yield</span>
+                      <span className="text-[0.65rem] font-black text-[#C0FF00] tracking-tighter mb-1 uppercase">+{formatINR(goal.yieldEarned ?? 0)} Yield</span>
                       <span className="text-[0.6rem] font-bold text-gray-500 flex items-center gap-1 uppercase">
                         <Clock size={10} /> {goal.deadline}
                       </span>
@@ -47,7 +49,7 @@ const GoalsOverview: React.FC<{ goals: Goal[], onDepositClick: (goal: Goal) => v
                     <h3 className="text-xl font-black text-white tracking-tight mb-1 group-hover:translate-x-1 transition-transform">{goal.name}</h3>
                     <div className="flex justify-between items-end mb-2">
                       <span className="text-xs text-gray-400 font-medium">Progress <span className="font-bold text-white">{progress}%</span></span>
-                      <span className="text-[0.65rem] text-gray-500 font-bold uppercase tracking-wider">₹{(goal.saved / 1000000).toLocaleString()} <span className="text-gray-700">/ ₹{(goal.target / 1000000).toLocaleString()}</span></span>
+                      <span className="text-[0.65rem] text-gray-500 font-bold uppercase tracking-wider">{formatINR(goal.saved)} <span className="text-gray-700">/ {formatINR(goal.target, true)}</span></span>
                     </div>
                     <div className="h-1.5 w-full bg-white/5 border border-white/10 rounded-full overflow-hidden">
                       <div

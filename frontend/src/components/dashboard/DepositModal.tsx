@@ -9,11 +9,13 @@ import {
   ShieldCheck,
   DollarSign,
   AlertCircle,
-  Plus
+  Plus,
+  Zap
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { cn } from '../../lib/utils';
 import FundAccountModal from './FundAccountModal';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface DepositModalProps {
   goal: any;
@@ -26,10 +28,12 @@ const DepositModal: React.FC<DepositModalProps> = ({ goal, isOpen, onClose, onSu
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<'form' | 'processing' | 'success'>('form');
   const [error, setError] = useState<string | null>(null);
+  const [reward, setReward] = useState<any>(null);
   const [balance, setBalance] = useState<number>(0);
   const [isFundingOpen, setIsFundingOpen] = useState(false);
   const [loadingBalance, setLoadingBalance] = useState(false);
   const userId = localStorage.getItem('ps_user_id');
+  const { formatUSDC } = useCurrency();
 
   const fetchBalance = async () => {
     if (!userId) return;
@@ -64,17 +68,23 @@ const DepositModal: React.FC<DepositModalProps> = ({ goal, isOpen, onClose, onSu
     setStep('processing');
 
     try {
-      await api.depositCustodial({
+      const result = await api.depositCustodial({
         userId,
         onChainGoalId: goal.onChainGoalId,
         amount: depositAmount
       });
       
+      if (result.reward) {
+        setReward(result.reward);
+      }
+      
       setStep('success');
+      // Extend the success duration if there's a reward to show
+      const duration = result.reward ? 4000 : 2000;
       setTimeout(() => {
         onSuccess(depositAmount);
         handleClose();
-      }, 2000);
+      }, duration);
     } catch (err: any) {
       console.error('Deposit failed:', err);
       setError(err.message || 'Deposit transaction failed');
@@ -85,6 +95,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ goal, isOpen, onClose, onSu
   const handleClose = () => {
     setAmount('');
     setStep('form');
+    setReward(null);
     setError(null);
     onClose();
   };
@@ -203,7 +214,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ goal, isOpen, onClose, onSu
                          <div className="flex justify-between text-[0.65rem] font-bold uppercase tracking-widest text-gray-500">
                             <span>Route</span>
                             <span className="text-gray-400 flex items-center gap-1">
-                               Silent Facilitator <ShieldCheck size={12} className="text-[#C0FF00]" />
+                                Silent Facilitator <ShieldCheck size={12} className="text-[#C0FF00]" />
                             </span>
                          </div>
                       </div>
@@ -243,17 +254,79 @@ const DepositModal: React.FC<DepositModalProps> = ({ goal, isOpen, onClose, onSu
                   {step === 'success' && (
                     <motion.div 
                       key="success"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="py-12 flex flex-col items-center text-center space-y-6"
+                      initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      className="py-8 flex flex-col items-center text-center space-y-6"
                     >
-                      <div className="w-24 h-24 bg-[#C0FF00]/10 border border-[#C0FF00] rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(192,255,0,0.25)]">
-                         <CheckCircle2 className="text-[#C0FF00]" size={48} strokeWidth={3} />
-                      </div>
-                      <div className="space-y-1">
-                         <h3 className="text-2xl font-black text-white uppercase italic tracking-tight">Saved <span className="text-[#C0FF00] not-italic">${amount}</span></h3>
-                         <p className="text-xs text-gray-500 font-medium">Funds successfully locked in vault.</p>
-                      </div>
+                      {!reward ? (
+                        <>
+                          <div className="w-20 h-20 bg-[#C0FF00]/10 border border-[#C0FF00] rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(192,255,0,0.25)]">
+                             <CheckCircle2 className="text-[#C0FF00]" size={40} strokeWidth={3} />
+                          </div>
+                          <div className="space-y-1">
+                             <h3 className="text-2xl font-black text-white uppercase italic tracking-tight leading-none">Saved <span className="text-[#C0FF00] not-italic">${amount}</span></h3>
+                             <p className="text-[0.65rem] text-gray-500 font-bold uppercase tracking-widest mt-2 px-8">Funds successfully locked in vault.</p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full space-y-6 relative">
+                           {/* Celebration Backdrop */}
+                           <div className="absolute inset-0 -top-10 flex justify-center -z-10">
+                              <div className="w-32 h-32 bg-[#C0FF00]/20 rounded-full blur-[60px] animate-pulse" />
+                           </div>
+
+                           <div className="flex flex-col items-center space-y-4">
+                              <div className="relative">
+                                 <motion.div 
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    transition={{ type: "spring", damping: 12, delay: 0.2 }}
+                                    className="w-20 h-20 bg-[#C0FF00]/20 border-2 border-[#C0FF00] rounded-3xl flex items-center justify-center rotate-12"
+                                 >
+                                    <Zap className="text-[#C0FF00]" size={32} fill="currentColor" />
+                                 </motion.div>
+                                 <motion.div 
+                                    initial={{ opacity: 0, scale: 0 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.5 }}
+                                    className="absolute -top-2 -right-2 bg-white text-black text-[0.6rem] font-black px-2 py-0.5 rounded-full uppercase italic"
+                                 >
+                                    +{reward.streak} MO
+                                 </motion.div>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                 <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter leading-none">
+                                    Streak <span className="text-[#C0FF00] not-italic">Unlocked</span>
+                                 </h3>
+                                 <p className="text-[0.6rem] text-gray-400 font-bold uppercase tracking-[0.2em]">Consistency Bonus Granted</p>
+                              </div>
+                           </div>
+
+                           <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mx-4 space-y-3">
+                              <div className="flex justify-between items-center text-[0.7rem] font-black uppercase tracking-widest text-gray-400">
+                                 <span>Deposit Bonus</span>
+                                 <span className="text-[#C0FF00]">+{reward.amount.toFixed(2)} USDC</span>
+                              </div>
+                              <div className="w-full h-px bg-white/5" />
+                              <div className="flex justify-between items-center text-[0.65rem] font-bold uppercase tracking-widest text-gray-500">
+                                 <span>Streak Stage</span>
+                                 <span className="text-white">{reward.streak} Month Milestone</span>
+                              </div>
+                           </div>
+
+                           {reward.isCompletion && (
+                              <motion.div
+                                 initial={{ y: 20, opacity: 0 }}
+                                 animate={{ y: 0, opacity: 1 }}
+                                 transition={{ delay: 0.8 }}
+                                 className="px-6 py-2 bg-[#C0FF00] text-black text-[0.65rem] font-black uppercase tracking-widest rounded-full italic animate-bounce mx-8"
+                              >
+                                 🏆 Goal Completed: +{reward.completionBonus.toFixed(2)} USDC
+                              </motion.div>
+                           )}
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

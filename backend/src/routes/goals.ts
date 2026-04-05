@@ -1,6 +1,6 @@
 import express from 'express';
 import { prisma } from '../lib/prisma';
-import { getCustodialClient, getAlgoBalance, algodClient, APP_ID, ensureMinimumAlgo } from '../lib/blockchain';
+import { getCustodialClient, getAlgoBalance, algodClient, APP_ID, ensureMinimumAlgo, airdropUsdc } from '../lib/blockchain';
 import { calcGoalMbr } from '../lib/contracts/PennyStalkerClient';
 import algosdk from 'algosdk';
 
@@ -14,6 +14,8 @@ const serializeGoal = (goal: any) => ({
   targetAmount: goal.targetAmount.toString(),
   currentBalance: goal.currentBalance.toString(),
   autopayAmount: goal.autopayAmount?.toString() || null,
+  consecutiveMonths: goal.consecutiveMonths,
+  lastIncentiveAt: goal.lastIncentiveAt ? goal.lastIncentiveAt.toISOString() : null,
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -61,10 +63,21 @@ router.put('/sync', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    const accruedRewards = await prisma.activityLog.aggregate({
+      where: { 
+        userId, 
+        onChainGoalId: Number(onChainGoalId),
+        type: { in: ['incentive', 'completion_reward'] } 
+      },
+      _sum: { amount: true }
+    });
+
+    const totalBalance = BigInt(newBalance) + (accruedRewards._sum.amount || 0n);
+
     const updatedGoal = await prisma.goalMetadata.update({
       where: { userId_onChainGoalId: { userId, onChainGoalId } },
       data: {
-        currentBalance: BigInt(newBalance),
+        currentBalance: totalBalance,
         status: newStatus || undefined
       }
     });
@@ -118,11 +131,23 @@ router.get('/sync/:userId', async (req, res) => {
         const onChainBalance = dataView.getBigUint64(10);
         const onChainStatus = dataView.getBigUint64(26);
 
+        // Fetch accrued rewards (incentives/bonuses) from DB to get total real balance
+        const accruedRewards = await prisma.activityLog.aggregate({
+          where: { 
+            userId, 
+            onChainGoalId: goal.onChainGoalId,
+            type: { in: ['incentive', 'completion_reward'] } 
+          },
+          _sum: { amount: true }
+        });
+
+        const totalBalance = onChainBalance + (accruedRewards._sum.amount || 0n);
+
         await prisma.goalMetadata.update({
           where: { id: goal.id },
           data: {
             targetAmount: onChainTarget,
-            currentBalance: onChainBalance,
+            currentBalance: totalBalance,
             status: onChainStatus === 0n ? 'ACTIVE' : (onChainStatus === 1n ? 'COMPLETED' : 'WITHDRAWN')
           }
         });
@@ -267,9 +292,50 @@ router.post('/deposit/custodial', async (req, res) => {
       where: { userId_onChainGoalId: { userId, onChainGoalId: Number(onChainGoalId) } }
     });
 
+    let incentiveRecord: any = null;
+
     if (goal) {
       let nextAutopayAt = goal.nextAutopayAt;
+      let consecutiveMonths = goal.consecutiveMonths;
+      let lastIncentiveAt = goal.lastIncentiveAt;
+      let incentiveAirdropped = false;
+      let completionAirdropped = false;
 
+      // 1. Consistency Incentive Logic (High Frequency - reward every deposit)
+      const now = new Date();
+      // Check if consistent (last reward was within the last 30 days)
+      const gapDays = lastIncentiveAt ? (now.getTime() - lastIncentiveAt.getTime()) / (1000 * 60 * 60 * 24) : 0;
+      
+      if (lastIncentiveAt && gapDays > 30) {
+        console.log(`🕒 ${gapDays.toFixed(1)} days since last deposit. Resetting streak to base.`);
+        consecutiveMonths = 1;
+      } else {
+        consecutiveMonths += 1;
+      }
+
+      // Calculate incentive rate: 0.5%, 1.0%, 1.5% ... cap at 4.0%
+      const rate = Math.min(0.04, 0.005 * consecutiveMonths);
+      const incentiveAmountUsdc = Number(amount) * rate;
+
+      if (incentiveAmountUsdc > 0.001) { // Airdrop even small rewards
+        console.log(`🎁 Consistency Bonus: ${rate * 100}% of ${amount} = ${incentiveAmountUsdc} USDC`);
+        await airdropUsdc(user.walletAddress!, incentiveAmountUsdc);
+        
+        await prisma.activityLog.create({
+          data: {
+            transactionId: `INCENTIVE_${Date.now()}`,
+            userId,
+            onChainGoalId: goal.onChainGoalId,
+            type: 'incentive',
+            amount: BigInt(Math.round(incentiveAmountUsdc * 1_000_000))
+          }
+        });
+        lastIncentiveAt = now;
+        incentiveAirdropped = true;
+        incentiveRecord = { amount: incentiveAmountUsdc, streak: consecutiveMonths, type: 'CONSISTENCY' };
+      }
+
+      // 2. Autopay Schedule Advance (if manual deposit satisfies the month)
       if (goal.autopayEnabled && goal.autopayAmount && amountMicroUsdc >= goal.autopayAmount) {
         console.log(`⏭️ Manual deposit satisfies autopay for goal '${goal.title}'. Advancing schedule.`);
         const baseDate = goal.nextAutopayAt || new Date();
@@ -278,16 +344,56 @@ router.post('/deposit/custodial', async (req, res) => {
         nextAutopayAt = advancedDate;
       }
 
+      // 3. Goal Completion Reward
+      let totalAmountToIncrement = amountMicroUsdc;
+      if (incentiveAirdropped) {
+        totalAmountToIncrement += BigInt(Math.round(incentiveAmountUsdc * 1_000_000));
+      }
+
+      let newBalance = goal.currentBalance + totalAmountToIncrement;
+      
+      if (newBalance >= goal.targetAmount && goal.status === 'ACTIVE') {
+        const bonusAmount = Number(goal.targetAmount) / 1_000_000 * 0.01; // 1% completion bonus
+        console.log(`🏆 Goal Completed! Airdropping ${bonusAmount} USDC bonus...`);
+        await airdropUsdc(user.walletAddress!, bonusAmount);
+        
+        const bonusMicroUsdc = BigInt(Math.round(bonusAmount * 1_000_000));
+        newBalance += bonusMicroUsdc; // Include bonus in final balance
+
+        await prisma.activityLog.create({
+          data: {
+            transactionId: `COMPLETION_${Date.now()}`,
+            userId,
+            onChainGoalId: goal.onChainGoalId,
+            type: 'completion_reward',
+            amount: bonusMicroUsdc
+          }
+        });
+        completionAirdropped = true;
+        incentiveRecord = { 
+          ...incentiveRecord, 
+          isCompletion: true, 
+          completionBonus: bonusAmount 
+        };
+      }
+
       await prisma.goalMetadata.update({
         where: { id: goal.id },
         data: {
-          currentBalance: goal.currentBalance + amountMicroUsdc,
-          nextAutopayAt
+          currentBalance: newBalance,
+          nextAutopayAt,
+          consecutiveMonths,
+          lastIncentiveAt,
+          status: newBalance >= goal.targetAmount ? 'COMPLETED' : 'ACTIVE'
         }
       });
     }
 
-    res.status(200).json({ txId, message: 'Deposit successful' });
+    res.status(200).json({ 
+      txId, 
+      message: 'Deposit successful',
+      reward: incentiveRecord
+    });
   } catch (error: any) {
     console.error('Custodial deposit error:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });

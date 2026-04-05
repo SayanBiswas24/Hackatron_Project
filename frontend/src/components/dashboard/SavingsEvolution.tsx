@@ -126,7 +126,7 @@ const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, ac
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10, fontWeight: 700 }}
-                  tickFormatter={(value) => `₹${Math.round(value).toLocaleString()}`}
+                  tickFormatter={(value) => `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                   domain={[0, 'auto']}
                   dx={-0}
                 />
@@ -143,7 +143,7 @@ const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, ac
                     }}
                     labelStyle={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: 900, marginBottom: 4, textTransform: 'uppercase' }}
                     itemStyle={{ color: '#C0FF00', fontSize: 14, fontWeight: 900 }}
-                    formatter={(value: any) => [`₹${Math.round(value).toLocaleString()}`, 'Total Savings']}
+                    formatter={(value: any) => [`₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Total Savings']}
                   />
                 )}
                 <Area

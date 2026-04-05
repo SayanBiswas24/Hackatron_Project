@@ -18,6 +18,8 @@ export interface Goal {
    lastDeposit: string;
    status: string;
    yieldEarned: number;
+   consecutiveMonths: number;
+   lastIncentiveAt: string | null;
 }
 
 interface GoalCardProps {
@@ -29,10 +31,9 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onClick }) => {
    const { formatINR, formatUSDC } = useCurrency();
    const progress = Math.min(100, Math.round((Number(goal.saved) / Number(goal.target)) * 100));
 
-   // Convert from microUSDC to standard units (already handled in mapping usually, but let's be safe)
-   const savedUsdc = Number(goal.saved) / 1000000;
-   const targetUsdc = Number(goal.target) / 1000000;
-   const yieldUsdc = Number(goal.yieldEarned) / 1000000;
+   const savedUsdc = Number(goal.saved);
+   const targetUsdc = Number(goal.target);
+   const yieldUsdc = Number(goal.yieldEarned);
 
    return (
       <Card
@@ -57,6 +58,11 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onClick }) => {
                         <span className="text-[0.65rem] font-bold text-gray-500 flex items-center gap-1 uppercase">
                            <Calendar size={10} /> Created {goal.createdAt}
                         </span>
+                        {goal.consecutiveMonths > 0 && (
+                           <span className="text-[0.6rem] font-black text-[#C0FF00] flex items-center gap-1 bg-[#C0FF00]/10 px-1.5 py-0.5 rounded border border-[#C0FF00]/20 animate-pulse">
+                              🔥 {goal.consecutiveMonths} MO STREAK
+                           </span>
+                        )}
                      </div>
                   </div>
                </div>

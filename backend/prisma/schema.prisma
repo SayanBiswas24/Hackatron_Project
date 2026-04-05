@@ -60,6 +60,10 @@ model GoalMetadata {
   lastAutopayStatus String?   // 'SUCCESS', 'FAILED', 'SKIPPED'
   
   lastAutopayAt    DateTime? // Timestamp of the last successful autopay
+  
+  // Consistency Incentives
+  consecutiveMonths Int       @default(0)
+  lastIncentiveAt   DateTime? // To prevent multiple incentives in one month
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
