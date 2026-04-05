@@ -76,90 +76,6 @@ router.put('/sync', async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-// POST /api/goals/custodial - Perform on-chain goal creation for a custodial user
-router.post('/custodial', async (req, res) => {
-  try {
-    const { userId, title, description, category, targetAmount, deadline } = req.body;
-
-    if (!userId || !title || !targetAmount || !deadline) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.walletType !== 'CUSTODIAL' || !user.encryptedMnemonic) {
-      return res.status(400).json({ error: 'Valid custodial vault not found' });
-    }
-
-    // 1. Calculate required MBR for this goal name
-    const mbrMicroAlgo = calcGoalMbr(title);
-    
-    // 2. Ensure account has minimum ALGO (Airdrop if needed)
-    await ensureMinimumAlgo(user.walletAddress!);
-
-    // 3. Check if account has enough ALGO for MBR + Fees (including potential opt-in)
-    const balance = await getAlgoBalance(user.walletAddress!);
-    const feeBuffer = 10_000n; // Increased to cover inner txns or opt-ins
-    if (balance < mbrMicroAlgo + feeBuffer) {
-      return res.status(400).json({ 
-        error: `Insufficient ALGO balance in vault. Required: ${(Number(mbrMicroAlgo) / 1e6).toFixed(4)} ALGO.` 
-      });
-    }
-
-    // 4. Perform on-chain creation (and ensure opt-in)
-    const client = getCustodialClient(user.encryptedMnemonic);
-    await client.ensureAppOptIn();
-
-    const deadlineUnix = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
-    const targetMicroUsdc = BigInt(Math.round(Number(targetAmount) * 1_000_000)); // Safely convert float to microUSDC
-
-    console.log(`🏗️ Creating on-chain goal '${title}' for ${user.walletAddress}...`);
-    const { goalId, txId } = await client.createGoal({
-      name: title,
-      targetAmountMicroUsdc: targetMicroUsdc,
-      deadlineUnixSec: deadlineUnix,
-      mbrMicroAlgo: mbrMicroAlgo
-    });
-
-    // 4. Save metadata to database
-    const newGoal = await prisma.goalMetadata.create({
-      data: {
-        userId,
-        onChainGoalId: Number(goalId),
-        title,
-        description,
-        category,
-        targetAmount: targetMicroUsdc,
-        currentBalance: 0n,
-        deadline: new Date(deadline),
-        status: 'ACTIVE'
-      }
-    });
-
-    // 5. Log Goal Creation Activity
-    await prisma.activityLog.create({
-      data: {
-        transactionId: txId,
-        userId,
-        onChainGoalId: Number(goalId),
-        type: 'GOAL_CREATED',
-        amount: null
-      }
-    });
-
-    res.status(201).json({
-      ...newGoal,
-      targetAmount: newGoal.targetAmount.toString(),
-      currentBalance: newGoal.currentBalance.toString()
-    });
-  } catch (error: any) {
-    console.error('Custodial goal creation error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
-});
-
-=======
->>>>>>> 721d822e648bb8b08fc2190563be58bc09d9c9d6
 // GET /api/goals/sync/:userId - Sync all user goals with on-chain box state
 router.get('/sync/:userId', async (req, res) => {
   try {
@@ -260,7 +176,7 @@ router.post('/custodial', async (req, res) => {
     await client.ensureAppOptIn();
 
     const deadlineUnix = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
-    const targetMicroUsdc = BigInt(targetAmount) * 1_000_000n;
+    const targetMicroUsdc = BigInt(Math.round(Number(targetAmount) * 1_000_000));
 
     console.log(`🏗️ Creating on-chain goal '${title}' for ${user.walletAddress}...`);
     const { goalId, txId } = await client.createGoal({
@@ -285,7 +201,7 @@ router.post('/custodial', async (req, res) => {
         deadline: new Date(deadline),
         status: 'ACTIVE',
         autopayEnabled: !!autopayEnabled,
-        autopayAmount: autopayAmount ? BigInt(autopayAmount) * 1_000_000n : null,
+        autopayAmount: autopayAmount ? BigInt(Math.round(Number(autopayAmount) * 1_000_000)) : null,
         nextAutopayAt: autopayEnabled ? nextAutopayDate : null
       }
     });

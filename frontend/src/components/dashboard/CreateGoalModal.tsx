@@ -38,12 +38,9 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
   const [target, setTarget] = useState('');
   const [deadline, setDeadline] = useState('');
   const [mbrPreview, setMbrPreview] = useState<string | null>(null);
-<<<<<<< HEAD
   const [error, setError] = useState<string | null>(null);
-=======
   const [autopayEnabled, setAutopayEnabled] = useState(false);
   const [autopayAmount, setAutopayAmount] = useState('');
->>>>>>> 721d822e648bb8b08fc2190563be58bc09d9c9d6
 
   const calculateMbr = () => {
     if (!name) return;

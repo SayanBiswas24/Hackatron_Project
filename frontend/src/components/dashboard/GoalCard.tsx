@@ -74,15 +74,9 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onClick }) => {
                <div className="flex justify-between items-end">
                   <div>
                      <p className="text-[0.65rem] text-gray-500 font-black uppercase tracking-widest mb-1.5 opacity-60">Current Progress</p>
-<<<<<<< HEAD
                      <div className="flex items-baseline gap-1.5 leading-none">
                         <span className="text-2xl font-black tracking-tighter text-white">{formatINR(savedUsdc)}</span>
                         <span className="text-[0.65rem] text-gray-600 font-bold uppercase tracking-widest">/ {formatINR(targetUsdc, true)}</span>
-=======
-                     <div className="flex items-baseline gap-1.5">
-                        <span className="text-2xl font-black tracking-tighter text-white">${Number(goal.saved).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        <span className="text-[0.7rem] text-gray-600 font-bold uppercase tracking-widest">/ ${Number(goal.target).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
->>>>>>> 721d822e648bb8b08fc2190563be58bc09d9c9d6
                      </div>
                      <p className="text-[0.55rem] text-gray-600 font-bold uppercase tracking-widest mt-1">
                         ≈ {formatUSDC(savedUsdc)}
@@ -90,7 +84,6 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onClick }) => {
                   </div>
                   <div className="text-right">
                      <span className="text-xl font-black text-white tracking-tighter">{progress}%</span>
-<<<<<<< HEAD
                      <div className="flex flex-col items-end">
                         <div className="flex items-center gap-1 justify-end text-[0.65rem] text-green-400 font-bold uppercase">
                            <TrendingUp size={10} /> +{formatINR(yieldUsdc)} Yield
@@ -98,10 +91,6 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onClick }) => {
                         <p className="text-[0.55rem] text-gray-600 font-bold uppercase tracking-widest mt-0.5">
                            ≈ {formatUSDC(yieldUsdc)}
                         </p>
-=======
-                     <div className="flex items-center gap-1 justify-end text-[0.65rem] text-green-400 font-bold uppercase">
-                        <TrendingUp size={10} /> +${Number(goal.yieldEarned).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Yield
->>>>>>> 721d822e648bb8b08fc2190563be58bc09d9c9d6
                      </div>
                   </div>
                </div>
