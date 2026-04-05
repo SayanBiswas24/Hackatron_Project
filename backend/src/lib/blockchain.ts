@@ -103,7 +103,7 @@ export async function airdropUsdc(toAddress: string, amountUsdc: number = 1000):
   const params = await algodClient.getTransactionParams().do();
 
   // amountUsdc is in whole units, convert to microUSDC (6 decimals)
-  const amount = BigInt(amountUsdc * 1_000_000);
+  const amount = BigInt(Math.round(amountUsdc * 1_000_000));
 
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     sender: platformAccount.addr.toString(),
@@ -198,7 +198,7 @@ export async function withdrawUsdc(userId: string, amountUsdc: number): Promise<
   const platformAccount = algosdk.mnemonicToSecretKey(platformMnemonic);
 
   const params = await algodClient.getTransactionParams().do();
-  const amount = BigInt(amountUsdc * 1_000_000);
+  const amount = BigInt(Math.round(amountUsdc * 1_000_000));
 
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     sender: userAccount.addr.toString(),

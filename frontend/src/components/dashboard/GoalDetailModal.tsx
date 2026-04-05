@@ -5,6 +5,7 @@ import type { Goal } from './GoalCard';
 import DepositModal from './DepositModal';
 import WithdrawalModal from './WithdrawalModal';
 import AutomationModal from './AutomationModal';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface GoalDetailModalProps {
    goal: Goal | null;
@@ -13,6 +14,7 @@ interface GoalDetailModalProps {
 }
 
 const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose }) => {
+   const { formatINR, formatUSDC } = useCurrency();
    const [isDepositModalOpen, setIsDepositModalOpen] = React.useState(false);
    const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = React.useState(false);
    const [isAutomationModalOpen, setIsAutomationModalOpen] = React.useState(false);
@@ -20,6 +22,11 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
    if (!goal) return null;
 
    const progress = Math.min(100, Math.round((Number(goal.saved) / Number(goal.target)) * 100));
+
+   const savedUsdc = Number(goal.saved) / 1000000;
+   const targetUsdc = Number(goal.target) / 1000000;
+   const yieldUsdc = Number(goal.yieldEarned) / 1000000;
+   const remainingUsdc = Math.max(0, targetUsdc - savedUsdc);
 
    return (
       <AnimatePresence>
@@ -72,24 +79,33 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                      {/* Hero Stats */}
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
-                           <span className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest mb-1 block">Total Balance</span>
-                           <div className="flex items-baseline gap-1">
-                              <span className="text-xl font-black text-white tracking-tighter">₹{(Number(goal.saved) / 1000000).toLocaleString()}</span>
-                              <span className="text-[0.65rem] text-neon-lime font-bold">LIVE</span>
+                           <span className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest mb-1 block leading-none">Total Balance</span>
+                           <div className="flex flex-col">
+                              <div className="flex items-baseline gap-1 mt-1">
+                                 <span className="text-xl font-black text-white tracking-tighter">{formatINR(savedUsdc)}</span>
+                                 <span className="text-[0.65rem] text-neon-lime font-bold">LIVE</span>
+                              </div>
+                              <span className="text-[0.55rem] text-gray-600 font-bold uppercase tracking-widest mt-0.5">≈ {formatUSDC(savedUsdc)}</span>
                            </div>
                         </div>
                         <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
-                           <span className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest mb-1 block">Target Amount</span>
-                           <div className="flex items-baseline gap-1">
-                              <span className="text-xl font-black text-white tracking-tighter">₹{(Number(goal.target) / 1000000).toLocaleString()}</span>
-                              <span className="text-[0.65rem] text-gray-600 font-bold">GOAL</span>
+                           <span className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest mb-1 block leading-none">Target Amount</span>
+                           <div className="flex flex-col">
+                              <div className="flex items-baseline gap-1 mt-1">
+                                 <span className="text-xl font-black text-white tracking-tighter">{formatINR(targetUsdc)}</span>
+                                 <span className="text-[0.65rem] text-gray-600 font-bold">GOAL</span>
+                              </div>
+                              <span className="text-[0.55rem] text-gray-600 font-bold uppercase tracking-widest mt-0.5">≈ {formatUSDC(targetUsdc)}</span>
                            </div>
                         </div>
                         <div className="p-4 rounded-2xl bg-[#C0FF00]/5 border border-[#C0FF00]/10">
-                           <span className="text-[0.6rem] font-black text-[#C0FF00] uppercase tracking-widest mb-1 block">Yield Generated</span>
-                           <div className="flex items-baseline gap-1">
-                              <span className="text-xl font-black text-[#C0FF00] tracking-tighter">+₹{(Number(goal.yieldEarned) / 1000000).toLocaleString()}</span>
-                              <span className="text-[0.65rem] text-[#C0FF00]/60 font-bold">APY 8.4%</span>
+                           <span className="text-[0.6rem] font-black text-[#C0FF00] uppercase tracking-widest mb-1 block leading-none">Yield Generated</span>
+                           <div className="flex flex-col">
+                              <div className="flex items-baseline gap-1 mt-1">
+                                 <span className="text-xl font-black text-[#C0FF00] tracking-tighter">+{formatINR(yieldUsdc)}</span>
+                                 <span className="text-[0.65rem] text-[#C0FF00]/60 font-bold">APY 8.4%</span>
+                              </div>
+                              <span className="text-[0.55rem] text-[#C0FF00]/40 font-bold uppercase tracking-widest mt-0.5">≈ {formatUSDC(yieldUsdc)}</span>
                            </div>
                         </div>
                      </div>
@@ -144,7 +160,7 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                               />
                            </div>
                            <p className="text-[0.65rem] text-gray-500 italic text-center">
-                              You need ₹{(Math.max(0, Number(goal.target) - Number(goal.saved)) / 1000000).toLocaleString()} more to reach your goal.
+                              You need {formatINR(remainingUsdc)} more to reach your goal.
                            </p>
                         </div>
                      </div>
@@ -158,25 +174,31 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                            <button className="text-[0.6rem] font-bold text-[#C0FF00] hover:underline uppercase">View Full History</button>
                         </div>
                         <div className="space-y-2">
-                           {[1, 2, 3].map((i) => (
-                              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 group hover:border-white/10 transition-all">
-                                 <div className="flex items-center gap-3">
-                                    <div className="p-1.5 rounded bg-green-500/10 text-green-400">
-                                       <DollarSign size={14} />
+                           {[1, 2, 3].map((i) => {
+                              const mockAmountUsdc = 50 * i;
+                              return (
+                                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 group hover:border-white/10 transition-all">
+                                    <div className="flex items-center gap-3">
+                                       <div className="p-1.5 rounded bg-green-500/10 text-green-400">
+                                          <DollarSign size={14} />
+                                       </div>
+                                       <div>
+                                          <p className="text-xs font-bold text-white">Deposit</p>
+                                          <p className="text-[0.6rem] text-gray-500">24 Mar 2026 • 11:24 AM</p>
+                                       </div>
                                     </div>
-                                    <div>
-                                       <p className="text-xs font-bold text-white">Deposit</p>
-                                       <p className="text-[0.6rem] text-gray-500">24 Mar 2026 • 11:24 AM</p>
+                                    <div className="flex flex-col items-end">
+                                       <div className="flex flex-col items-end">
+                                          <p className="text-xs font-black text-white font-mono leading-none">+{formatINR(mockAmountUsdc)}</p>
+                                          <p className="text-[0.55rem] text-gray-600 font-bold uppercase tracking-widest mt-1">≈ {formatUSDC(mockAmountUsdc)}</p>
+                                       </div>
+                                       <p className="text-[0.55rem] text-gray-600 font-bold flex items-center gap-1 justify-end uppercase mt-1">
+                                          <CheckCircle size={10} /> Confirmed
+                                       </p>
                                     </div>
                                  </div>
-                                 <div className="text-right">
-                                    <p className="text-xs font-black text-white font-mono">+₹{(5000 * i).toLocaleString()}</p>
-                                    <p className="text-[0.55rem] text-gray-600 font-bold flex items-center gap-1 justify-end uppercase">
-                                       <CheckCircle size={10} /> Confirmed
-                                    </p>
-                                 </div>
-                              </div>
-                           ))}
+                              );
+                           })}
                         </div>
                      </div>
 

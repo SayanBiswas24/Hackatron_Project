@@ -7,6 +7,7 @@ import userRoutes from './routes/users';
 import goalRoutes from './routes/goals';
 import activityRoutes from './routes/activity';
 import walletRoutes from './routes/wallet';
+import marketRoutes from './routes/market';
 
 // Debug env
 console.log("DATABASE_URL:", process.env.DATABASE_URL);
@@ -27,6 +28,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/goals', goalRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use('/api/market', marketRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });

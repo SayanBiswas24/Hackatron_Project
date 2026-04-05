@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
         userId,
         onChainGoalId: onChainGoalId !== undefined ? onChainGoalId : null,
         type,
-        amount: amount !== undefined ? BigInt(amount) : null
+        amount: amount !== undefined ? BigInt(Math.round(Number(amount))) : null
       }
     });
 

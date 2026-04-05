@@ -126,7 +126,7 @@ router.post('/custodial', async (req, res) => {
     await client.ensureAppOptIn();
 
     const deadlineUnix = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
-    const targetMicroUsdc = BigInt(targetAmount) * 1_000_000n; // Assuming input is USDC
+    const targetMicroUsdc = BigInt(Math.round(Number(targetAmount) * 1_000_000)); // Safely convert float to microUSDC
 
     console.log(`🏗️ Creating on-chain goal '${title}' for ${user.walletAddress}...`);
     const { goalId, txId } = await client.createGoal({
@@ -269,7 +269,7 @@ router.post('/deposit/custodial', async (req, res) => {
     // 1. Initial on-chain setup
     const client = getCustodialClient(user.encryptedMnemonic);
     const usdcAssetId = await client.getUsdcAssetId();
-    const amountMicroUsdc = BigInt(amount) * 1_000_000n;
+    const amountMicroUsdc = BigInt(Math.round(Number(amount) * 1_000_000)); // Safely convert float to microUSDC
 
     console.log(`💰 Preparing custodial deposit for ${user.walletAddress}...`);
     

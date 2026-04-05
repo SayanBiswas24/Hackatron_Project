@@ -16,6 +16,7 @@ import { api } from '../../lib/api';
 import { useWallet } from '@txnlab/use-wallet-react';
 import algosdk from 'algosdk';
 import { PennyStalkerClient, calcGoalMbr } from '../../lib/contracts/PennyStalkerClient';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const ALGOD_SERVER = import.meta.env.VITE_ALGOD_SERVER || 'https://testnet-api.algonode.cloud';
 const ALGOD_PORT = import.meta.env.VITE_ALGOD_PORT || '';
@@ -31,11 +32,13 @@ interface CreateGoalModalProps {
 }
 
 const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  const { toUSDC, formatUSDC } = useCurrency();
   const [step, setStep] = useState<'form' | 'processing' | 'success'>('form');
   const [name, setName] = useState('');
   const [target, setTarget] = useState('');
   const [deadline, setDeadline] = useState('');
   const [mbrPreview, setMbrPreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const calculateMbr = () => {
     if (!name) return;
@@ -55,19 +58,19 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
     setError(null);
 
     try {
-      const targetAmount = parseFloat(target);
-      const targetMicroUsdc = BigInt(targetAmount * 1_000_000); // 6 decimals
+      const targetInr = parseFloat(target);
+      const targetAmount = toUSDC(targetInr); // Convert INR to USDC for storage
+      const targetMicroUsdc = BigInt(Math.round(targetAmount * 1_000_000)); // 6 decimals
       const deadlineUnixSec = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
       const mbrMicroAlgo = calculateMbr()!;
 
-      // Determine wallet type (we can fetch this or use local state, but usually activeAddress implies Pera)
+      // Determine wallet type
       const userRes = await api.fetchUser(userId);
       const isCustodial = userRes?.walletType === 'CUSTODIAL';
 
       let onChainGoalId: number;
 
       if (isCustodial) {
-        // Backend handles custodial creation
         const res = await api.createGoalCustodial({
           userId,
           title: name,
@@ -77,7 +80,6 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
         });
         onChainGoalId = res.onChainGoalId;
       } else {
-        // Frontend signs for Pera
         if (!activeWallet || !activeAddress) throw new Error("No active wallet detected");
         
         const client = new PennyStalkerClient({
@@ -89,7 +91,6 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
           }
         });
 
-        console.log("🏗️ Creating goal on-chain via Pera...");
         const resultId = await client.createGoal({
           name,
           targetAmountMicroUsdc: targetMicroUsdc,
@@ -98,7 +99,6 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
         });
         onChainGoalId = Number(resultId);
 
-        // Sync metadata to backend
         await api.createGoalMetadata({
           userId,
           onChainGoalId,
@@ -111,11 +111,10 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
 
       setStep('success');
       setTimeout(() => {
-        // We trigger success and let the parent refresh
         onSuccess({
             id: onChainGoalId,
             name,
-            target: targetAmount,
+            target: targetAmount * 1000000,
             saved: 0,
             color: '#C0FF00',
             icon: Target,
@@ -132,8 +131,6 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
       setStep('form');
     }
   };
-
-  const [error, setError] = useState<string | null>(null);
 
   const handleClose = () => {
     setStep('form');
@@ -202,39 +199,44 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
                           onChange={(e) => setName(e.target.value)}
                           onBlur={calculateMbr}
                           placeholder="e.g. Dream Home Fund"
-                          className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm text-white focus:border-[#C0FF00]/50 outline-none transition-all placeholder:text-gray-700"
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm text-white focus:border-[#C0FF00]/50 outline-none transition-all placeholder:text-gray-700 font-bold"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-6">
                       {/* Target Amount */}
                       <div className="space-y-2">
-                        <label className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest ml-1">USDC Target</label>
+                        <label className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest ml-1">Target Amount (INR)</label>
                         <div className="relative">
-                          <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                          <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-[#C0FF00]" size={18} />
                           <input 
                             required
                             type="number"
                             value={target}
                             onChange={(e) => setTarget(e.target.value)}
                             placeholder="0.00"
-                            className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-4 py-4 text-sm text-white focus:border-[#C0FF00]/50 outline-none transition-all placeholder:text-gray-700"
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm text-white focus:border-[#C0FF00]/50 outline-none transition-all placeholder:text-gray-700 font-bold leading-none"
                           />
                         </div>
+                        {target && (
+                          <p className="text-[0.6rem] text-gray-600 font-bold uppercase tracking-widest mt-1 ml-1 leading-none">
+                            ≈ {formatUSDC(toUSDC(parseFloat(target) || 0))} USDC
+                          </p>
+                        )}
                       </div>
 
                       {/* Deadline */}
                       <div className="space-y-2">
-                        <label className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest ml-1">Exit Date</label>
+                        <label className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest ml-1">Exit Date (Deadline)</label>
                         <div className="relative">
-                          <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                          <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-[#C0FF00]" size={18} />
                           <input 
                             required
                             type="date"
                             value={deadline}
                             onChange={(e) => setDeadline(e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-4 py-4 text-sm text-white focus:border-[#C0FF00]/50 outline-none transition-all [color-scheme:dark]"
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm text-white focus:border-[#C0FF00]/50 outline-none transition-all [color-scheme:dark] font-bold"
                           />
                         </div>
                       </div>
@@ -247,14 +249,14 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
                             <Calculator size={16} />
                          </div>
                          <div className="flex-1">
-                            <p className="text-[0.6rem] font-black text-[#C0FF00] uppercase tracking-widest">Protocol MBR Deposit</p>
-                            <p className="text-[0.65rem] text-gray-400 font-medium">This vault requires <span className="text-white font-bold">{mbrPreview} ALGO</span> for on-chain box storage.</p>
+                            <p className="text-[0.6rem] font-black text-[#C0FF00] uppercase tracking-widest leading-none">Protocol MBR Deposit</p>
+                            <p className="text-[0.65rem] text-gray-400 font-medium mt-1 leading-none">This vault requires <span className="text-white font-bold">{mbrPreview} ALGO</span> for on-chain storage.</p>
                          </div>
                       </div>
                     )}
 
                     {error && (
-                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold">
+                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold leading-none">
                             {error}
                         </div>
                     )}
@@ -264,7 +266,7 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
                       disabled={!name || !target || !deadline}
                       className="w-full py-5 bg-[#C0FF00] text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_0_40px_rgba(192,255,0,0.2)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale"
                     >
-                      Create On-Chain Vault <ArrowRight size={18} strokeWidth={3} />
+                      Initialize On-Chain Vault <ArrowRight size={18} strokeWidth={3} />
                     </button>
                   </motion.form>
                 )}
@@ -274,7 +276,6 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
                     key="processing"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 1.05 }}
                     className="py-12 flex flex-col items-center text-center space-y-6"
                   >
                     <div className="relative">
@@ -282,10 +283,10 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
                        <Zap className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[#00F0FF] animate-pulse" size={24} />
                     </div>
                     <div className="space-y-2">
-                       <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Deploying to <span className="text-[#00F0FF] not-italic">Algorand</span></h3>
-                       <div className="flex flex-col items-center gap-2">
+                       <h3 className="text-xl font-black text-white uppercase italic tracking-tight leading-none">Deploying to Algorand</h3>
+                       <div className="flex flex-col items-center gap-2 mt-4">
                           <p className="text-[0.65rem] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                             <CheckCircle2 size={12} className="text-[#C0FF00]" /> Constructing Atomic Group
+                             <ShieldCheck size={12} className="text-[#C0FF00]" /> Constructing Atomic Group
                           </p>
                           <p className="text-[0.65rem] font-bold text-white uppercase tracking-widest flex items-center gap-2">
                              <Loader2 size={12} className="animate-spin text-[#00F0FF]" /> Broadcasting Box Storage
@@ -300,13 +301,13 @@ const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClose, onSu
                     key="success"
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="py-12 flex flex-col items-center text-center space-y-6"
+                    className="py-12 flex flex-col items-center text-center space-y-4"
                   >
                     <div className="w-24 h-24 bg-[#C0FF00]/10 border border-[#C0FF00] rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(192,255,0,0.25)]">
                        <CheckCircle2 className="text-[#C0FF00]" size={48} strokeWidth={3} />
                     </div>
                     <div className="space-y-1">
-                       <h3 className="text-2xl font-black text-white uppercase italic tracking-tight">Vault <span className="text-[#C0FF00] not-italic">Confirmed</span></h3>
+                       <h3 className="text-2xl font-black text-white uppercase italic tracking-tight leading-none">Vault Confirmed</h3>
                        <p className="text-xs text-gray-500 font-medium">Smart contract successfully initialized on Testnet.</p>
                     </div>
                     <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[0.6rem] font-black text-gray-400 uppercase tracking-widest">

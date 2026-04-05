@@ -14,6 +14,7 @@ import type { ToastType } from '../../components/dashboard/StatusToast';
 import { ShieldCheck, Zap, Loader2, Target, Wallet } from 'lucide-react';
 import { api } from '../../lib/api';
 import { cn } from '../../lib/utils';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface Toast {
   id: string;
@@ -24,6 +25,7 @@ interface Toast {
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { formatINR } = useCurrency();
   const [isAdminMode, setIsAdminMode] = useState(false); 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [selectedGoal, setSelectedGoal] = useState<any>(null);
@@ -109,7 +111,7 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleDepositSuccess = (amount: number) => {
-    addToast('success', 'Deposit Confirmed', `Successfully saved $${amount} into ${selectedGoal.name}`);
+    addToast('success', 'Deposit Confirmed', `Successfully saved ${formatINR(amount)} into ${selectedGoal.name}`);
     initializeData(); 
   };
 

@@ -153,4 +153,11 @@ export const api = {
     if (!res.ok) throw new Error(result.error || 'Signin failed');
     return result;
   },
+
+  // Market
+  async fetchExchangeRate(): Promise<{ rate: number }> {
+    const res = await fetch(`${API_BASE_URL}/market/exchange-rate`);
+    if (!res.ok) throw new Error('Failed to fetch exchange rate');
+    return res.json();
+  },
 };

@@ -62,7 +62,10 @@ export interface Activity {
   goal: string;
 }
 
+import { useCurrency } from '../../context/CurrencyContext';
+
 const RecentActivity: React.FC<{ activities?: Activity[] }> = ({ activities = initialActivities as Activity[] }) => {
+  const { formatINR, formatUSDC } = useCurrency();
   const isEmpty = activities.length === 0;
 
   return (
@@ -118,15 +121,20 @@ const RecentActivity: React.FC<{ activities?: Activity[] }> = ({ activities = in
                 </div>
                 <div className="text-right shrink-0">
                   <p className={cn(
-                    "text-sm font-black tracking-tight",
+                    "text-sm font-black tracking-tight leading-none",
                     activity.type === 'deposit' ? "text-green-400" :
                       activity.type === 'withdrawal' ? "text-red-400" :
                         "text-white"
                   )}>
                     {activity.type === 'deposit' ? '+' : activity.type === 'withdrawal' ? '-' : ''}
-                    {activity.amount ? `₹${(activity.amount).toLocaleString()}` : (activity.type === 'goal_creation' ? 'INIT' : '0')}
+                    {activity.amount ? formatINR(activity.amount) : (activity.type === 'goal_creation' ? 'INIT' : '0')}
                   </p>
-                  <div className="flex items-center gap-1 justify-end">
+                  {activity.amount > 0 && (
+                    <p className="text-[0.55rem] text-gray-600 font-bold uppercase tracking-widest mt-1 leading-none">
+                      ≈ {formatUSDC(activity.amount)}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-1 justify-end mt-1">
                     <div className={cn(
                       "w-1 h-1 rounded-full",
                       activity.status === 'completed' || activity.status === 'active' ? "bg-green-400" : "bg-orange-400"

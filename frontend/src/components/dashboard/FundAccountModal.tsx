@@ -9,6 +9,7 @@ import {
 import { api } from '../../lib/api';
 import { cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface FundAccountModalProps {
   isOpen: boolean;
@@ -29,15 +30,11 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
   currentBalance,
   onFunded 
 }) => {
+  const { exchangeRate, toUSDC, formatINR, formatUSDC } = useCurrency();
   const [activeTab, setActiveTab] = useState<Tab>('deposit');
   const [activeMethod, setActiveMethod] = useState<Method>('upi');
   const [step, setStep] = useState<Step>('select');
   const [amount, setAmount] = useState('5000'); // Default 5000 INR
-  const [address, setAddress] = useState<string>('');
-  
-  // Rate simulation 1 USDC = 88.50 INR
-  const EXCHANGE_RATE = 88.50;
-  const usdcAmount = (parseFloat(amount) / EXCHANGE_RATE).toFixed(2);
 
   useEffect(() => {
     if (isOpen) {
@@ -49,8 +46,7 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
 
   const fetchWallet = async () => {
     try {
-      const data = await api.fetchWalletBalance(userId);
-      setAddress(data.address);
+      await api.fetchWalletBalance(userId);
     } catch (e) {
       console.error(e);
     }
@@ -61,17 +57,18 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
       setStep('processing');
       await new Promise(resolve => setTimeout(resolve, 3000)); // Immersion delay
 
+      const amountToProcess = parseFloat(amount);
+      const usdcToProcess = toUSDC(amountToProcess);
+
       if (activeTab === 'deposit') {
-        const usdcToPurchase = parseFloat(usdcAmount);
-        await api.purchaseUsdc(userId, usdcToPurchase);
-        toast.success(`₹${amount} converted to ${usdcToPurchase} USDC!`);
+        await api.purchaseUsdc(userId, usdcToProcess);
+        toast.success(`₹${amountToProcess.toLocaleString()} converted to ${usdcToProcess.toFixed(2)} USDC!`);
       } else {
-        const usdcToWithdraw = parseFloat(amount);
-        if (usdcToWithdraw > currentBalance) {
+        if (usdcToProcess > currentBalance) {
           throw new Error('Insufficient USDC balance');
         }
-        await api.withdrawUsdc(userId, usdcToWithdraw);
-        toast.success(`${amount} USDC converted to INR and sent to bank!`);
+        await api.withdrawUsdc(userId, usdcToProcess);
+        toast.success(`${usdcToProcess.toFixed(2)} USDC converted to ${formatINR(usdcToProcess)} and sent to bank!`);
       }
 
       setStep('success');
@@ -159,7 +156,7 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
                   >
                     <div className="flex justify-between items-end mb-2">
                        <p className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest">Select Method</p>
-                       <p className="text-[0.65rem] font-bold text-gray-400 italic">Balance: <span className="text-white">₹{(currentBalance * EXCHANGE_RATE).toLocaleString()}</span></p>
+                       <p className="text-[0.65rem] font-bold text-gray-400 italic">Balance: <span className="text-white">{formatINR(currentBalance)}</span></p>
                     </div>
                     {methods.map((m) => (
                       <button
@@ -199,31 +196,31 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
                   >
                     <div className="space-y-3">
                       <label className="text-[0.65rem] font-black text-gray-500 uppercase tracking-widest ml-1">
-                        Amount to {activeTab === 'deposit' ? 'Add (INR)' : 'Withdraw (USDC)'}
+                        Amount to {activeTab === 'deposit' ? 'Add (INR)' : 'Withdraw (INR)'}
                       </label>
                       <div className="relative">
-                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-gray-600 italic">
-                          {activeTab === 'deposit' ? '₹' : '$'}
+                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-gray-600 italic leading-none">
+                          ₹
                         </span>
                         <input 
                           type="number"
                           value={amount}
                           onChange={(e) => setAmount(e.target.value)}
-                          className="w-full bg-white/[0.03] border border-white/10 rounded-3xl py-6 px-12 text-3xl font-black text-white outline-none focus:border-[#C0FF00]/50 italic"
+                          className="w-full bg-white/[0.03] border border-white/10 rounded-3xl py-6 px-12 text-3xl font-black text-white outline-none focus:border-[#C0FF00]/50 italic leading-none"
                           autoFocus
                         />
                       </div>
                       
                       <div className="flex justify-between p-4 bg-white/[0.02] rounded-2xl border border-white/5">
                         <div className="space-y-1">
-                          <p className="text-[0.5rem] font-black text-gray-500 uppercase tracking-tighter">You will {activeTab === 'deposit' ? 'Receive' : 'Receive approx.'}</p>
+                          <p className="text-[0.5rem] font-black text-gray-500 uppercase tracking-tighter">You will {activeTab === 'deposit' ? 'Receive' : 'Pay'}</p>
                           <p className="text-sm font-black text-white italic">
-                             {activeTab === 'deposit' ? `$${usdcAmount} USDC` : `₹${(parseFloat(amount) * EXCHANGE_RATE).toLocaleString()}`}
+                             {formatUSDC(toUSDC(parseFloat(amount) || 0))} USDC
                           </p>
                         </div>
                         <div className="text-right space-y-1">
                           <p className="text-[0.5rem] font-black text-gray-500 uppercase tracking-tighter">Exchange Rate</p>
-                          <p className="text-[0.65rem] font-bold text-gray-400">1 USDC = ₹{EXCHANGE_RATE}</p>
+                          <p className="text-[0.65rem] font-bold text-gray-400 leading-none">1 USDC = ₹{exchangeRate.toFixed(2)}</p>
                         </div>
                       </div>
                     </div>

@@ -12,7 +12,9 @@ declare global {
 }
 
 
-window.Buffer = Buffer;
+import { CurrencyProvider } from './context/CurrencyContext'
+
+window.Buffer = Buffer
 const walletManager = new WalletManager({
   wallets: [
     WalletId.PERA
@@ -32,7 +34,9 @@ const walletManager = new WalletManager({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <WalletProvider manager={walletManager}>
-      <App />
+      <CurrencyProvider>
+        <App />
+      </CurrencyProvider>
     </WalletProvider>
   </StrictMode>
 )

@@ -2,10 +2,12 @@ import React from 'react';
 import { DollarSign, TrendingUp, Target, ShieldCheck, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { GlowCard } from '../ui/spotlight-card';
 import { cn } from '../../lib/utils';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const StatCard = ({
   title,
   value,
+  secondaryValue,
   icon: Icon,
   trend,
   trendValue,
@@ -15,6 +17,7 @@ const StatCard = ({
 }: {
   title: string;
   value: string;
+  secondaryValue?: string;
   icon: any;
   trend?: string;
   trendValue?: string;
@@ -52,6 +55,11 @@ const StatCard = ({
             </div>
           )}
         </div>
+        {secondaryValue && (
+          <p className="text-[0.65rem] font-bold text-gray-500 tracking-wider uppercase mt-0.5">
+            ≈ {secondaryValue}
+          </p>
+        )}
         {trend && <p className="text-[0.65rem] text-gray-500 mt-1 font-medium italic">{trend}</p>}
       </div>
     </div>
@@ -73,16 +81,16 @@ const StatsGrid: React.FC<StatsGridProps> = ({
   averageProgress = 0,
   isEmpty = false
 }) => {
-  const EXCHANGE_RATE = 88.50; // Mock rate for display
-  const walletInInr = walletBalance * EXCHANGE_RATE;
+  const { formatINR, formatUSDC } = useCurrency();
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatCard
         title="Total Vault Assets"
-        value={`₹${Math.round(totalSaved * EXCHANGE_RATE).toLocaleString()}`}
+        value={formatINR(totalSaved)}
+        secondaryValue={formatUSDC(totalSaved)}
         icon={DollarSign}
-        trend={`${totalSaved.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`}
+        trend={isEmpty ? "Starting your journey" : "Vault assets synchronized"}
         isPositive={true}
         color="#C0FF00"
         glowColor="lime"
@@ -106,9 +114,10 @@ const StatsGrid: React.FC<StatsGridProps> = ({
       />
       <StatCard
         title="Wallet Balance"
-        value={`₹${Math.round(walletInInr).toLocaleString()}`}
+        value={formatINR(walletBalance)}
+        secondaryValue={formatUSDC(walletBalance)}
         icon={ShieldCheck}
-        trend={`${walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`}
+        trend={isEmpty ? "Connect your primary wallet" : "On-chain funds available"}
         color="#FF3B30"
         glowColor="red"
       />

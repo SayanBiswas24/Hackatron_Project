@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Clock, TrendingUp, Calendar, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useCurrency } from '../../context/CurrencyContext';
 
 export interface Goal {
    id: string | number;
@@ -25,7 +26,13 @@ interface GoalCardProps {
 }
 
 const GoalCard: React.FC<GoalCardProps> = ({ goal, onClick }) => {
+   const { formatINR, formatUSDC } = useCurrency();
    const progress = Math.min(100, Math.round((Number(goal.saved) / Number(goal.target)) * 100));
+
+   // Convert from microUSDC to standard units (already handled in mapping usually, but let's be safe)
+   const savedUsdc = Number(goal.saved) / 1000000;
+   const targetUsdc = Number(goal.target) / 1000000;
+   const yieldUsdc = Number(goal.yieldEarned) / 1000000;
 
    return (
       <Card
@@ -67,15 +74,23 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onClick }) => {
                <div className="flex justify-between items-end">
                   <div>
                      <p className="text-[0.65rem] text-gray-500 font-black uppercase tracking-widest mb-1.5 opacity-60">Current Progress</p>
-                     <div className="flex items-baseline gap-1.5">
-                        <span className="text-2xl font-black tracking-tighter text-white">₹{(Number(goal.saved) / 1000000).toLocaleString()}</span>
-                        <span className="text-[0.7rem] text-gray-600 font-bold uppercase tracking-widest">/ ₹{(Number(goal.target) / 1000000).toLocaleString()}</span>
+                     <div className="flex items-baseline gap-1.5 leading-none">
+                        <span className="text-2xl font-black tracking-tighter text-white">{formatINR(savedUsdc)}</span>
+                        <span className="text-[0.65rem] text-gray-600 font-bold uppercase tracking-widest">/ {formatINR(targetUsdc, true)}</span>
                      </div>
+                     <p className="text-[0.55rem] text-gray-600 font-bold uppercase tracking-widest mt-1">
+                        ≈ {formatUSDC(savedUsdc)}
+                     </p>
                   </div>
                   <div className="text-right">
                      <span className="text-xl font-black text-white tracking-tighter">{progress}%</span>
-                     <div className="flex items-center gap-1 justify-end text-[0.65rem] text-green-400 font-bold uppercase">
-                        <TrendingUp size={10} /> +₹{(Number(goal.yieldEarned) / 1000000).toLocaleString()} Yield
+                     <div className="flex flex-col items-end">
+                        <div className="flex items-center gap-1 justify-end text-[0.65rem] text-green-400 font-bold uppercase">
+                           <TrendingUp size={10} /> +{formatINR(yieldUsdc)} Yield
+                        </div>
+                        <p className="text-[0.55rem] text-gray-600 font-bold uppercase tracking-widest mt-0.5">
+                           ≈ {formatUSDC(yieldUsdc)}
+                        </p>
                      </div>
                   </div>
                </div>
@@ -87,7 +102,7 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onClick }) => {
                         background: `linear-gradient(90deg, ${goal.color}33, ${goal.color})`,
                         width: `${progress}%`,
                         boxShadow: `0 0 15px ${goal.color}44`
-                     }}
+                      }}
                   >
                      <div className="w-1 h-full bg-white/20 animate-pulse" />
                   </div>

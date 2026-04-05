@@ -27,7 +27,10 @@ const emptyData = [
   { name: 'Jul', value: 30 },
 ];
 
+import { useCurrency } from '../../context/CurrencyContext';
+
 const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, activities = [] }) => {
+  const { toINR } = useCurrency();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -58,7 +61,6 @@ const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, ac
     });
 
     // Backfill balance for months where no activity occurred
-    const EXCHANGE_RATE = 88.50; // Consistency with StatsGrid
     let lastKnownBalance = 0;
     chartData = initialData.map(d => {
       if (monthlyData[d.name] !== undefined) {
@@ -66,7 +68,7 @@ const SavingsEvolution: React.FC<SavingsEvolutionProps> = ({ isEmpty = false, ac
       }
       return {
         name: d.name,
-        value: lastKnownBalance * EXCHANGE_RATE // Convert to INR for display
+        value: toINR(lastKnownBalance) // Convert to INR using live rate
       };
     });
   }
