@@ -164,38 +164,35 @@ router.get('/balance/:userId', async (req, res) => {
       const algoBalance = await getAlgoBalance(user.walletAddress);
       const usdcBalance = await getUsdcBalance(user.walletAddress);
 
-      // Also calculate "Projected" balance from Database activities for consistency
-      const activities = await prisma.activityLog.findMany({
-        where: { userId }
-      });
-
+      // We only fallback to DB-derived balance if blockchain balance is 0 AND we have recorded activities.
+      // This prevents "doubling" where on-chain and off-chain sync are both active.
       let dbBalance = 0n;
-      activities.forEach(a => {
-        const type = a.type.toLowerCase();
-        const amt = a.amount || 0n;
-        
-        // Wallet Funding (Deposit to wallet)
-        if (type === 'purchase' || (type === 'deposit' && a.onChainGoalId === null)) {
-          dbBalance += amt;
-        } 
-        // Wallet Withdrawal (Sell USDC for Fiat)
-        else if (type === 'withdrawal' && a.onChainGoalId === null) {
-          dbBalance -= amt;
-        }
-        // Goal Deposit or Autopay (Move from Wallet to Goal)
-        else if ((type === 'deposit' && a.onChainGoalId !== null) || type === 'autopay_success') {
-          dbBalance -= amt;
-        }
-        // Goal Withdrawal (Move from Goal back to Wallet)
-        else if (type === 'goal_withdrawal' || type === 'withdrawal' && a.onChainGoalId !== null) {
-          dbBalance += amt;
-        }
-      });
+      let finalUsdc = usdcBalance;
 
-      const finalUsdc = usdcBalance > 0n ? usdcBalance : dbBalance;
+      if (usdcBalance === 0n) {
+        const activities = await prisma.activityLog.findMany({
+          where: { userId }
+        });
 
-      console.log("💰 Blockchain USDC:", usdcBalance.toString());
-      console.log("📈 Activity-Derived USDC:", dbBalance.toString());
+        activities.forEach(a => {
+          const type = a.type.toUpperCase();
+          const amt = a.amount || 0n;
+          
+          if (type === 'PURCHASE' || (type === 'DEPOSIT' && a.onChainGoalId === null)) {
+            dbBalance += amt;
+          } 
+          else if (type === 'WITHDRAWAL' && a.onChainGoalId === null) {
+            dbBalance -= amt;
+          }
+          else if ((type === 'DEPOSIT' && a.onChainGoalId !== null) || type === 'AUTOPAY_SUCCESS') {
+            dbBalance -= amt;
+          }
+          else if (type === 'GOAL_WITHDRAWAL' || (type === 'WITHDRAWAL' && a.onChainGoalId !== null)) {
+            dbBalance += amt;
+          }
+        });
+        finalUsdc = dbBalance;
+      }
 
       return res.json({
         address: user.walletAddress,
@@ -210,16 +207,16 @@ router.get('/balance/:userId', async (req, res) => {
       const activities = await prisma.activityLog.findMany({ where: { userId } });
       let dbBalance = 0n;
       activities.forEach(a => {
-        const type = a.type.toLowerCase();
+        const type = a.type.toUpperCase();
         const amt = a.amount || 0n;
         
-        if (type === 'purchase' || (type === 'deposit' && a.onChainGoalId === null)) {
+        if (type === 'PURCHASE' || (type === 'DEPOSIT' && a.onChainGoalId === null)) {
           dbBalance += amt;
-        } else if (type === 'withdrawal' && a.onChainGoalId === null) {
+        } else if (type === 'WITHDRAWAL' && a.onChainGoalId === null) {
           dbBalance -= amt;
-        } else if ((type === 'deposit' && a.onChainGoalId !== null) || type === 'autopay_success') {
+        } else if ((type === 'DEPOSIT' && a.onChainGoalId !== null) || type === 'AUTOPAY_SUCCESS') {
           dbBalance -= amt;
-        } else if (type === 'goal_withdrawal' || type === 'withdrawal' && a.onChainGoalId !== null) {
+        } else if (type === 'GOAL_WITHDRAWAL' || (type === 'WITHDRAWAL' && a.onChainGoalId !== null)) {
           dbBalance += amt;
         }
       });
@@ -334,7 +331,7 @@ router.post('/purchase', async (req, res) => {
         data: {
           transactionId: txId,
           userId,
-          type: 'deposit',
+          type: 'DEPOSIT',
           amount: amountMicroUsdc
         }
       });
@@ -356,7 +353,7 @@ router.post('/purchase', async (req, res) => {
         data: {
           transactionId: simTxId,
           userId,
-          type: 'deposit', // matches SavingsEvolution.tsx filter
+          type: 'DEPOSIT',
           amount: amountMicroUsdc
         }
       });

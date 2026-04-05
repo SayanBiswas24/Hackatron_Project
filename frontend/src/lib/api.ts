@@ -198,4 +198,11 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch exchange rate');
     return res.json();
   },
+
+  // Analytics
+  async fetchAnalytics(userId: string) {
+    const res = await fetch(`${API_BASE_URL}/analytics/snapshot/${userId}`);
+    if (!res.ok) throw new Error('Failed to fetch analytics');
+    return res.json();
+  }
 };

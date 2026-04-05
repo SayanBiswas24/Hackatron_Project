@@ -8,6 +8,7 @@ import goalRoutes from './routes/goals';
 import activityRoutes from './routes/activity';
 import walletRoutes from './routes/wallet';
 import marketRoutes from './routes/market';
+import analyticsRoutes from './routes/analytics';
 import { processScheduledAutopays } from './lib/autopay';
 
 // Debug env
@@ -30,6 +31,7 @@ app.use('/api/goals', goalRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/market', marketRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });

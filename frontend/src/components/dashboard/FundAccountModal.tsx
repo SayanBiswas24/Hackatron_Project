@@ -6,6 +6,7 @@ import {
   Smartphone, ArrowDownLeft, ArrowUpRight, 
   ChevronRight, BadgePercent
 } from 'lucide-react';
+import { useRef } from 'react';
 import { api } from '../../lib/api';
 import { cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
@@ -35,6 +36,7 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
   const [activeMethod, setActiveMethod] = useState<Method>('upi');
   const [step, setStep] = useState<Step>('select');
   const [amount, setAmount] = useState('5000'); // Default 5000 INR
+  const isExecuting = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -53,15 +55,20 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
   };
 
   const handleAction = async () => {
+    if (isExecuting.current) return;
+    
     try {
-      setStep('processing');
+      isExecuting.current = true;
+      // We are already in 'processing' step from the button click
+      
       await new Promise(resolve => setTimeout(resolve, 3000)); // Immersion delay
 
       const amountToProcess = parseFloat(amount);
       const usdcToProcess = toUSDC(amountToProcess);
 
       if (activeTab === 'deposit') {
-        await api.purchaseUsdc(userId, usdcToProcess);
+        const methodLabel = activeMethod === 'upi' ? 'UPI' : activeMethod === 'bank' ? 'Net Banking' : 'Credit Card';
+        await api.purchaseUsdc(userId, usdcToProcess, methodLabel);
         toast.success(`₹${amountToProcess.toLocaleString()} converted to ${usdcToProcess.toFixed(2)} USDC!`);
       } else {
         if (usdcToProcess > currentBalance) {
@@ -76,6 +83,8 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
     } catch (error: any) {
       toast.error(error.message || 'Transaction failed');
       setStep('input');
+    } finally {
+      isExecuting.current = false;
     }
   };
 
@@ -234,9 +243,68 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
                         </button>
                         <button 
                             onClick={() => setStep(activeMethod === 'card' ? 'payment' : 'processing')}
-                            className="flex-[2] py-4 bg-[#C0FF00] text-black font-black uppercase text-[0.65rem] tracking-widest rounded-2xl shadow-[0_0_30px_rgba(192,255,0,0.2)] hover:scale-[1.02] transition-all font-mono"
+                            disabled={!amount || parseFloat(amount) <= 0}
+                            className="flex-[2] py-4 bg-[#C0FF00] text-black font-black uppercase text-[0.65rem] tracking-widest rounded-2xl shadow-[0_0_30px_rgba(192,255,0,0.2)] hover:scale-[1.02] transition-all font-mono flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Confirm {activeTab === 'deposit' ? 'Deposit' : 'Withdrawal'}
+                        </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {step === 'payment' && (
+                   <motion.div 
+                    key="payment"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="space-y-6"
+                  >
+                    <div className="space-y-4">
+                      <p className="text-[0.65rem] font-black text-gray-500 uppercase tracking-widest ml-1">Secure Card Terminal</p>
+                      <div className="p-6 bg-white/[0.03] border border-white/10 rounded-3xl space-y-4">
+                        <div className="flex justify-between items-center mb-4">
+                           <div className="flex items-center gap-2">
+                              <CreditCard size={20} className="text-[#C0FF00]" />
+                              <span className="text-sm font-bold text-white italic">Security Level: PCI-DSS v4</span>
+                           </div>
+                           <ShieldCheck size={18} className="text-[#C0FF00]" />
+                        </div>
+                        <div className="space-y-2">
+                           <p className="text-[0.5rem] font-black text-gray-600 uppercase italic">Card Number</p>
+                           <div className="w-full h-12 bg-white/5 rounded-xl border border-white/10 flex items-center px-4 text-gray-400 font-mono text-sm tracking-widest italic">
+                              **** **** **** 4242
+                           </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                              <p className="text-[0.5rem] font-black text-gray-600 uppercase italic">Expiry Date</p>
+                              <div className="w-full h-12 bg-white/5 rounded-xl border border-white/10 flex items-center px-4 text-gray-400 font-mono text-sm tracking-widest">
+                                 12/28
+                              </div>
+                           </div>
+                           <div className="space-y-2">
+                              <p className="text-[0.5rem] font-black text-gray-600 uppercase italic">CVV</p>
+                              <div className="w-full h-12 bg-white/5 rounded-xl border border-white/10 flex items-center px-4 text-gray-400 font-mono text-sm tracking-widest italic">
+                                 ***
+                              </div>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={() => setStep('input')}
+                            className="flex-1 py-4 bg-white/5 text-white font-black uppercase text-[0.65rem] tracking-widest rounded-2xl border border-white/10 hover:bg-white/10 transition-all font-mono"
+                        >
+                            Back
+                        </button>
+                        <button 
+                            onClick={() => setStep('processing')}
+                            className="flex-[2] py-4 bg-[#C0FF00] text-black font-black uppercase text-[0.65rem] tracking-widest rounded-2xl shadow-[0_0_30px_rgba(192,255,0,0.2)] hover:scale-[1.02] transition-all font-mono"
+                        >
+                            Complete Payment
                         </button>
                     </div>
                   </motion.div>

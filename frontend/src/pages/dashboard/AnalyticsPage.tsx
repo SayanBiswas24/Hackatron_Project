@@ -31,9 +31,10 @@ const AnalyticsPage: React.FC = () => {
   const navigate = useNavigate();
   const userId = localStorage.getItem('ps_user_id');
   const [isLoading, setIsLoading] = useState(true);
+  const [userData, setUserData] = useState<any>(null);
   const [walletBalance, setWalletBalance] = useState({ usdc: '0', algo: '0' });
   const [goals, setGoals] = useState<any[]>([]);
-  const [activities, setActivities] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
 
   const [isMounted, setIsMounted] = useState(false);
 
@@ -50,15 +51,17 @@ const AnalyticsPage: React.FC = () => {
     if (!userId) return;
     try {
       setIsLoading(true);
-      const [balance, fetchedGoals, fetchedActivities] = await Promise.all([
-        api.fetchWalletBalance(userId),
-        api.fetchGoals(userId),
-        api.fetchActivity(userId)
+      const [user, balance, fetchedGoals, fetchedAnalytics] = await Promise.all([
+        api.fetchUser(userId).catch(() => null),
+        api.fetchWalletBalance(userId).catch(() => ({ usdc: '0', algo: '0' })),
+        api.fetchGoals(userId).catch(() => []),
+        api.fetchAnalytics(userId).catch(() => null)
       ]);
       
+      setUserData(user);
       setWalletBalance(balance);
       setGoals(fetchedGoals);
-      setActivities(fetchedActivities);
+      setAnalytics(fetchedAnalytics);
     } catch (err) {
       console.error("Error fetching analytics data:", err);
     } finally {
@@ -67,35 +70,22 @@ const AnalyticsPage: React.FC = () => {
   };
 
   // Calculations
-  const walletUsdc = Number(walletBalance.usdc) / 1000000;
-  const depositedUsdc = goals.reduce((acc, g) => acc + (Number(g.currentBalance) / 1000000), 0);
-  const totalInr = depositedUsdc * EXCHANGE_RATE;
+  // Derived from Backend Analytics
+  const metrics = analytics?.metrics || { 
+    totalCapitalUsdc: 0, 
+    totalYieldUsdc: 0, 
+    avgProgress: 0, 
+    goalCount: 0, 
+    apy: 0 
+  };
 
-  // Simulated Yield (8.4% APY based on current balance)
-  const simulatedYieldInr = totalInr * 0.084 / 365; // Daily yield for demo
-  
-  const totalTargetUsdc = goals.reduce((acc, g) => acc + (Number(g.targetAmount) / 1000000), 0);
-  const avgProgress = totalTargetUsdc > 0 ? Math.round((goalsUsdc / totalTargetUsdc) * 100) : 0;
+  const performanceData = analytics?.history || [];
+  const distributionData = analytics?.distribution?.length > 0 
+    ? analytics.distribution 
+    : [{ name: 'Wallet Balance', value: Number(walletBalance.usdc) / 1000000, color: '#C0FF00' }];
 
-  const distributionData = goals.length > 0 ? goals.map((g, idx) => ({
-    name: g.title,
-    value: Number(g.currentBalance) / 1000000,
-    color: g.colorHex || ['#C0FF00', '#00F0FF', '#BF5AF2', '#FF9F0A'][idx % 4]
-  })) : [{ name: 'Wallet Balance', value: walletUsdc, color: '#C0FF00' }];
-
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
-  // Performance History - Fallback to mock growth if no history, but scaled to real balance
-  const performanceData = months.slice(0, 7).map((m, idx) => {
-    // If we have actual activities, we should ideally use them. 
-    // For now, we'll keep the scaled mock but note the count.
-    const factor = (idx + 1) / 7;
-    return {
-      name: m,
-      savings: Math.round(totalInr * factor) + (activities.length * 0), // Reference activities to avoid unused warning
-      yield: Math.round(simulatedYieldInr * 30 * factor)
-    };
-  });
+  const totalInr = metrics.totalCapitalUsdc * EXCHANGE_RATE;
+  const yieldInr = metrics.totalYieldUsdc * EXCHANGE_RATE;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -109,7 +99,7 @@ const AnalyticsPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout userData={userData}>
         <div className="flex flex-col items-center justify-center h-full min-h-[70vh] gap-4">
            <Loader2 className="animate-spin text-[#C0FF00]" size={48} />
            <p className="text-sm font-black text-white italic uppercase tracking-widest text-[#C0FF00]">Securing Financial Intelligence...</p>
@@ -119,7 +109,7 @@ const AnalyticsPage: React.FC = () => {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout userData={userData}>
       <div className="relative min-h-[calc(100vh-64px)] w-full overflow-hidden">
         <SparkEffect />
 
@@ -145,9 +135,9 @@ const AnalyticsPage: React.FC = () => {
           {/* Core Metrics */}
           <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
              {[
-               { title: 'Total Capital', value: `₹${Math.round(totalInr).toLocaleString()}`, icon: IndianRupee, color: '#C0FF00', sub: '+8.4% APY' },
-               { title: 'Yield Generated', value: `₹${Math.round(simulatedYieldInr).toLocaleString()}`, icon: TrendingUp, color: '#BF5AF2', sub: 'Compound interest' },
-               { title: 'Avg. Progress', value: `${avgProgress}%`, icon: Target, color: '#00F0FF', sub: `Across ${goals.length} active goals` },
+               { title: 'Total Capital', value: `₹${Math.round(totalInr).toLocaleString()}`, icon: IndianRupee, color: '#C0FF00', sub: `+${metrics.apy}% APY` },
+               { title: 'Yield Generated', value: `₹${Math.round(yieldInr).toLocaleString()}`, icon: TrendingUp, color: '#BF5AF2', sub: 'Compound interest' },
+               { title: 'Avg. Progress', value: `${metrics.avgProgress}%`, icon: Target, color: '#00F0FF', sub: `Across ${metrics.goalCount} active goals` },
                { title: 'Vault Security', value: 'Maximal', icon: ShieldCheck, color: '#F87171', sub: 'Verified on Algorand' },
              ].map((metric) => (
                <Card key={metric.title} className="bg-[#141C18] border-white/5 shadow-2xl relative overflow-hidden group">
@@ -189,7 +179,7 @@ const AnalyticsPage: React.FC = () => {
                               paddingAngle={5}
                               dataKey="value"
                             >
-                              {distributionData.map((entry, index) => (
+                              {distributionData.map((entry: any, index: number) => (
                                 <Cell key={`cell-${index}`} fill={entry.color} opacity={0.8} />
                               ))}
                             </Pie>
@@ -308,7 +298,7 @@ const AnalyticsPage: React.FC = () => {
                     <CardDescription className="text-xs text-gray-500 font-medium tracking-tight">Estimated completion timelines for your active targets.</CardDescription>
                   </CardHeader>
                   <CardContent className="p-6 pt-2 space-y-4">
-                     {goals.length > 0 ? goals.map(goal => {
+                     {goals.length > 0 ? goals.map((goal: any) => {
                         const saved = Number(goal.currentBalance) / 1000000;
                         const target = Number(goal.targetAmount) / 1000000;
                         const progress = Math.min(100, Math.round((saved / target) * 100));
