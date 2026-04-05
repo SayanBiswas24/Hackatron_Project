@@ -23,6 +23,7 @@ export type GoalStruct = {
   currentBalance: uint64;
   deadline: uint64;
   status: uint64;
+  dignitary: arc4.Address;
 }
 
 const STATUS_ACTIVE = 0 as uint64;
@@ -31,9 +32,8 @@ const STATUS_WITHDRAWN = 2 as uint64;
 
 // Box key = keyPrefix('g', 1 byte) + sender.bytes(32) + op.itob(goalId)(8) = 41 bytes
 const BOX_KEY_LEN = 41 as uint64;
-// 4 x uint64 fields: targetAmount, currentBalance, deadline, status = 4 * 8 = 32 bytes
-// name string = 2 byte ARC-4 length header + actual name bytes (dynamic)
-const FIXED_FIELDS_BYTES = 32 as uint64;
+// 4 x uint64 fields (32) + 1 x Address (32) = 64 bytes
+const FIXED_FIELDS_BYTES = 64 as uint64;
 // ARC-4 dynamic string header overhead
 const STRING_HEADER_BYTES = 2 as uint64;
 // Algorand MBR base cost per box (microAlgo)
@@ -45,6 +45,7 @@ export class PennyStalker extends Contract {
   usdcAsset = GlobalState<Asset>({ key: 'usdc' });
 
   nextGoalId = LocalState<uint64>({ key: 'next_id' });
+  penaltyUntil = LocalState<uint64>({ key: 'penalty' });
 
   goals = BoxMap<bytes, GoalStruct>({ keyPrefix: 'g' });
 
@@ -75,6 +76,7 @@ export class PennyStalker extends Contract {
   @arc4.abimethod({ allowActions: 'OptIn' })
   optInToApp(): void {
     this.nextGoalId(Txn.sender).value = 0 as uint64;
+    this.penaltyUntil(Txn.sender).value = 0 as uint64;
   }
 
   /**
@@ -91,6 +93,7 @@ export class PennyStalker extends Contract {
     name: string,
     targetAmount: uint64,
     deadline: uint64,
+    dignitary: arc4.Address,
     mbrPay: gtxn.PaymentTxn,
   ): uint64 {
     const currentId = this.nextGoalId(Txn.sender).value;
@@ -116,6 +119,7 @@ export class PennyStalker extends Contract {
       currentBalance: 0 as uint64,
       deadline: deadline,
       status: STATUS_ACTIVE,
+      dignitary: dignitary,
     };
 
     this.nextGoalId(Txn.sender).value = currentId + (1 as uint64);
@@ -186,6 +190,54 @@ export class PennyStalker extends Contract {
     }).submit();
 
     // Refund box MBR (ALGO) back to user
+    itxn.payment({
+      receiver: Txn.sender,
+      amount: mbrRefund,
+      fee: 0 as uint64,
+    }).submit();
+  }
+
+  /**
+   * Performs an emergency withdrawal with dual-authorization from the user and dignitary.
+   * Release funds immediately regardless of deadline/target.
+   * Triggers a 60-day incentive penalty for the user.
+   *
+   * @param goalId  - The ID of the goal.
+   * @param auth - An app call from the dignitary authorizing the release.
+   */
+  emergencyWithdraw(goalId: uint64, auth: gtxn.ApplicationCallTxn): void {
+    const boxKey = Txn.sender.bytes.concat(op.itob(goalId));
+    assert(this.goals(boxKey).exists, 'Goal not found');
+
+    const goal = { ...this.goals(boxKey).value };
+    assert(goal.status !== STATUS_WITHDRAWN, 'Already withdrawn');
+
+    // Verification: Atomic group must contain a call from the designated dignitary
+    assert(auth.sender === goal.dignitary.native, 'Unauthorized dignitary');
+    assert(auth.appId === Global.currentApplicationId, 'Invalid auth app');
+
+    // Set 60-day penalty (60 * 24 * 3600 = 5,184,000 seconds)
+    const penaltyDuration = 5184000 as uint64;
+    this.penaltyUntil(Txn.sender).value = Global.latestTimestamp + penaltyDuration;
+
+    const amountToSend = goal.currentBalance;
+    assert(amountToSend > (0 as uint64), 'No funds to withdraw');
+
+    const nameLen = op.len(Bytes(goal.name));
+    const valueSize = (STRING_HEADER_BYTES + nameLen + FIXED_FIELDS_BYTES) as uint64;
+    const mbrRefund = (BOX_MBR_BASE + BOX_MBR_PER_BYTE * (BOX_KEY_LEN + valueSize)) as uint64;
+
+    this.goals(boxKey).delete();
+
+    // Release USDC
+    itxn.assetTransfer({
+      xferAsset: this.usdcAsset.value,
+      assetAmount: amountToSend,
+      assetReceiver: Txn.sender,
+      fee: 0 as uint64,
+    }).submit();
+
+    // Refund MBR
     itxn.payment({
       receiver: Txn.sender,
       amount: mbrRefund,

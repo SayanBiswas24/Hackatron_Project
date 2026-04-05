@@ -3,8 +3,8 @@
 
 // @algorandfoundation/algorand-typescript/arc4/index.d.ts::Contract.approvalProgram() -> uint64:
 main:
-    intcblock 0 1 8 2
-    bytecblock "usdc" 0x0022 "next_id" "g"
+    intcblock 0 8 1 2 400 2500
+    bytecblock "usdc" 0x0042 "g" "next_id" "penalty"
     // PennyStalker.algo.ts:44
     // export class PennyStalker extends Contract {
     pushbytes 0x88edbcc1 // method "optInToApp()void"
@@ -18,13 +18,13 @@ main_switch_case_next@3:
     !
     assert // OnCompletion must be NoOp
     txn ApplicationID
-    bz main_create_NoOp@10
-    pushbytess 0xca329aeb 0x8a7d6a6f 0x3e26e453 0x21f1ddff // method "optIntoUsdc()void", method "createGoal(string,uint64,uint64,pay)uint64", method "deposit(uint64,axfer)void", method "withdraw(uint64)void"
+    bz main_create_NoOp@11
+    pushbytess 0xca329aeb 0x1e31541a 0x3e26e453 0x21f1ddff 0x25d1a94f // method "optIntoUsdc()void", method "createGoal(string,uint64,uint64,address,pay)uint64", method "deposit(uint64,axfer)void", method "withdraw(uint64)void", method "emergencyWithdraw(uint64,appl)void"
     txna ApplicationArgs 0
-    match optIntoUsdc createGoal deposit withdraw
+    match optIntoUsdc createGoal deposit withdraw emergencyWithdraw
     err
 
-main_create_NoOp@10:
+main_create_NoOp@11:
     // PennyStalker.algo.ts:44
     // export class PennyStalker extends Contract {
     pushbytes 0x973b616f // method "createApplication(uint64)void"
@@ -33,10 +33,10 @@ main_create_NoOp@10:
     err
 
 main_optInToApp_route@2:
-    // PennyStalker.algo.ts:75
+    // PennyStalker.algo.ts:76
     // @arc4.abimethod({ allowActions: 'OptIn' })
     txn OnCompletion
-    intc_1 // OptIn
+    intc_2 // OptIn
     ==
     txn ApplicationID
     &&
@@ -46,37 +46,37 @@ main_optInToApp_route@2:
 
 // PennyStalker.algo.ts::PennyStalker.createApplication[routing]() -> void:
 createApplication:
-    // PennyStalker.algo.ts:54
+    // PennyStalker.algo.ts:55
     // createApplication(usdcAsset: Asset): void {
     txna ApplicationArgs 1
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
     // PennyStalker.algo.ts:45
     // usdcAsset = GlobalState<Asset>({ key: 'usdc' });
     bytec_0 // "usdc"
-    // PennyStalker.algo.ts:55
+    // PennyStalker.algo.ts:56
     // this.usdcAsset.value = usdcAsset;
     swap
     app_global_put
-    // PennyStalker.algo.ts:54
+    // PennyStalker.algo.ts:55
     // createApplication(usdcAsset: Asset): void {
-    intc_1 // 1
+    intc_2 // 1
     return
 
 
 // PennyStalker.algo.ts::PennyStalker.optIntoUsdc[routing]() -> void:
 optIntoUsdc:
-    // PennyStalker.algo.ts:62
+    // PennyStalker.algo.ts:63
     // assert(Txn.sender === Global.creatorAddress, 'Must be creator');
     txn Sender
     global CreatorAddress
     ==
     assert // Must be creator
-    // PennyStalker.algo.ts:64-69
+    // PennyStalker.algo.ts:65-70
     // itxn.assetTransfer({
     //   xferAsset: this.usdcAsset.value,
     //   assetAmount: 0 as uint64,
@@ -84,26 +84,26 @@ optIntoUsdc:
     //   fee: 0 as uint64,
     // }).submit();
     itxn_begin
-    // PennyStalker.algo.ts:65
+    // PennyStalker.algo.ts:66
     // xferAsset: this.usdcAsset.value,
     intc_0 // 0
     // PennyStalker.algo.ts:45
     // usdcAsset = GlobalState<Asset>({ key: 'usdc' });
     bytec_0 // "usdc"
-    // PennyStalker.algo.ts:65
+    // PennyStalker.algo.ts:66
     // xferAsset: this.usdcAsset.value,
     app_global_get_ex
     assert // check GlobalState exists
-    // PennyStalker.algo.ts:67
+    // PennyStalker.algo.ts:68
     // assetReceiver: Global.currentApplicationAddress,
     global CurrentApplicationAddress
     itxn_field AssetReceiver
-    // PennyStalker.algo.ts:66
+    // PennyStalker.algo.ts:67
     // assetAmount: 0 as uint64,
     intc_0 // 0
     itxn_field AssetAmount
     itxn_field XferAsset
-    // PennyStalker.algo.ts:64-69
+    // PennyStalker.algo.ts:65-70
     // itxn.assetTransfer({
     //   xferAsset: this.usdcAsset.value,
     //   assetAmount: 0 as uint64,
@@ -112,11 +112,11 @@ optIntoUsdc:
     // }).submit();
     pushint 4 // 4
     itxn_field TypeEnum
-    // PennyStalker.algo.ts:68
+    // PennyStalker.algo.ts:69
     // fee: 0 as uint64,
     intc_0 // 0
     itxn_field Fee
-    // PennyStalker.algo.ts:64-69
+    // PennyStalker.algo.ts:65-70
     // itxn.assetTransfer({
     //   xferAsset: this.usdcAsset.value,
     //   assetAmount: 0 as uint64,
@@ -124,37 +124,48 @@ optIntoUsdc:
     //   fee: 0 as uint64,
     // }).submit();
     itxn_submit
-    // PennyStalker.algo.ts:61
+    // PennyStalker.algo.ts:62
     // optIntoUsdc(): void {
-    intc_1 // 1
+    intc_2 // 1
     return
 
 
 // PennyStalker.algo.ts::PennyStalker.optInToApp[routing]() -> void:
 optInToApp:
-    // PennyStalker.algo.ts:77
+    // PennyStalker.algo.ts:78
     // this.nextGoalId(Txn.sender).value = 0 as uint64;
     txn Sender
     // PennyStalker.algo.ts:47
     // nextGoalId = LocalState<uint64>({ key: 'next_id' });
-    bytec_2 // "next_id"
-    // PennyStalker.algo.ts:77
+    bytec_3 // "next_id"
+    // PennyStalker.algo.ts:78
     // this.nextGoalId(Txn.sender).value = 0 as uint64;
     intc_0 // 0
     app_local_put
-    // PennyStalker.algo.ts:75
+    // PennyStalker.algo.ts:79
+    // this.penaltyUntil(Txn.sender).value = 0 as uint64;
+    txn Sender
+    // PennyStalker.algo.ts:48
+    // penaltyUntil = LocalState<uint64>({ key: 'penalty' });
+    bytec 4 // "penalty"
+    // PennyStalker.algo.ts:79
+    // this.penaltyUntil(Txn.sender).value = 0 as uint64;
+    intc_0 // 0
+    app_local_put
+    // PennyStalker.algo.ts:76
     // @arc4.abimethod({ allowActions: 'OptIn' })
-    intc_1 // 1
+    intc_2 // 1
     return
 
 
 // PennyStalker.algo.ts::PennyStalker.createGoal[routing]() -> void:
 createGoal:
-    // PennyStalker.algo.ts:90-95
+    // PennyStalker.algo.ts:92-98
     // createGoal(
     //   name: string,
     //   targetAmount: uint64,
     //   deadline: uint64,
+    //   dignitary: arc4.Address,
     //   mbrPay: gtxn.PaymentTxn,
     // ): uint64 {
     txna ApplicationArgs 1
@@ -171,37 +182,43 @@ createGoal:
     txna ApplicationArgs 2
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
     txna ApplicationArgs 3
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
+    txna ApplicationArgs 4
+    dup
+    len
+    pushint 32 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
     txn GroupIndex
-    intc_1 // 1
+    intc_2 // 1
     -
     dup
     gtxns TypeEnum
-    intc_1 // pay
+    intc_2 // pay
     ==
     assert // transaction type is pay
-    // PennyStalker.algo.ts:96
+    // PennyStalker.algo.ts:99
     // const currentId = this.nextGoalId(Txn.sender).value;
     txn Sender
     intc_0 // 0
     // PennyStalker.algo.ts:47
     // nextGoalId = LocalState<uint64>({ key: 'next_id' });
-    bytec_2 // "next_id"
-    // PennyStalker.algo.ts:96
+    bytec_3 // "next_id"
+    // PennyStalker.algo.ts:99
     // const currentId = this.nextGoalId(Txn.sender).value;
     app_local_get_ex
     assert // check LocalState exists
-    // PennyStalker.algo.ts:97
+    // PennyStalker.algo.ts:100
     // const boxKey = Txn.sender.bytes.concat(op.itob(currentId));
     txn Sender
     dig 1
@@ -209,102 +226,106 @@ createGoal:
     swap
     dig 1
     concat
-    // PennyStalker.algo.ts:49
+    // PennyStalker.algo.ts:50
     // goals = BoxMap<bytes, GoalStruct>({ keyPrefix: 'g' });
-    bytec_3 // "g"
+    bytec_2 // "g"
     swap
     concat
-    // PennyStalker.algo.ts:99
+    // PennyStalker.algo.ts:102
     // assert(!this.goals(boxKey).exists, 'Goal ID conflict');
     dup
     box_len
     bury 1
     !
     assert // Goal ID conflict
-    // PennyStalker.algo.ts:100
+    // PennyStalker.algo.ts:103
     // assert(deadline > Global.latestTimestamp, 'Deadline must be in the future');
-    dig 4
+    dig 5
     global LatestTimestamp
     >
     assert // Deadline must be in the future
-    // PennyStalker.algo.ts:101
+    // PennyStalker.algo.ts:104
     // assert(targetAmount > (0 as uint64), 'Target amount must be greater than zero');
-    dig 5
-    assert // Target amount must be greater than zero
-    // PennyStalker.algo.ts:105
-    // const nameLen = op.len(Bytes(name));
     dig 6
+    assert // Target amount must be greater than zero
+    // PennyStalker.algo.ts:108
+    // const nameLen = op.len(Bytes(name));
+    dig 7
     len
-    // PennyStalker.algo.ts:107
+    // PennyStalker.algo.ts:110
     // const requiredMbr = (BOX_MBR_BASE + BOX_MBR_PER_BYTE * (BOX_KEY_LEN + valueSize)) as uint64;
     dup
-    // PennyStalker.algo.ts:106-107
+    // PennyStalker.algo.ts:109-110
     // const valueSize = (STRING_HEADER_BYTES + nameLen + FIXED_FIELDS_BYTES) as uint64;
     // const requiredMbr = (BOX_MBR_BASE + BOX_MBR_PER_BYTE * (BOX_KEY_LEN + valueSize)) as uint64;
-    pushint 75 // 75
+    pushint 107 // 107
     +
-    // PennyStalker.algo.ts:107
+    // PennyStalker.algo.ts:110
     // const requiredMbr = (BOX_MBR_BASE + BOX_MBR_PER_BYTE * (BOX_KEY_LEN + valueSize)) as uint64;
-    pushint 400 // 400
+    intc 4 // 400
     *
-    pushint 2500 // 2500
+    intc 5 // 2500
     +
-    // PennyStalker.algo.ts:109
+    // PennyStalker.algo.ts:112
     // assert(mbrPay.receiver === Global.currentApplicationAddress, 'MBR must be paid to the contract');
     dig 5
     gtxns Receiver
     global CurrentApplicationAddress
     ==
     assert // MBR must be paid to the contract
-    // PennyStalker.algo.ts:110
+    // PennyStalker.algo.ts:113
     // assert(mbrPay.amount >= requiredMbr, 'Insufficient MBR payment for box storage');
     dig 5
     gtxns Amount
     <=
     assert // Insufficient MBR payment for box storage
-    // PennyStalker.algo.ts:111
+    // PennyStalker.algo.ts:114
     // assert(mbrPay.sender === Txn.sender, 'MBR payer must match the caller');
     uncover 4
     gtxns Sender
     txn Sender
     ==
     assert // MBR payer must match the caller
-    // PennyStalker.algo.ts:113-119
+    // PennyStalker.algo.ts:116-123
     // this.goals(boxKey).value = {
     //   name: name,
     //   targetAmount: targetAmount,
     //   currentBalance: 0 as uint64,
     //   deadline: deadline,
     //   status: STATUS_ACTIVE,
+    //   dignitary: dignitary,
     // };
     itob
     extract 6 2
-    uncover 6
+    uncover 7
     concat
-    uncover 5
+    uncover 6
     itob
-    bytec_1 // 0x0022
+    bytec_1 // 0x0042
     swap
     concat
-    // PennyStalker.algo.ts:116
+    // PennyStalker.algo.ts:119
     // currentBalance: 0 as uint64,
     intc_0 // 0
-    // PennyStalker.algo.ts:113-119
+    // PennyStalker.algo.ts:116-123
     // this.goals(boxKey).value = {
     //   name: name,
     //   targetAmount: targetAmount,
     //   currentBalance: 0 as uint64,
     //   deadline: deadline,
     //   status: STATUS_ACTIVE,
+    //   dignitary: dignitary,
     // };
     itob
     swap
     dig 1
     concat
-    uncover 6
+    uncover 7
     itob
     concat
     swap
+    concat
+    uncover 5
     concat
     swap
     concat
@@ -312,54 +333,55 @@ createGoal:
     box_del
     pop
     box_put
-    // PennyStalker.algo.ts:121
+    // PennyStalker.algo.ts:125
     // this.nextGoalId(Txn.sender).value = currentId + (1 as uint64);
     swap
-    intc_1 // 1
+    intc_2 // 1
     +
     txn Sender
     // PennyStalker.algo.ts:47
     // nextGoalId = LocalState<uint64>({ key: 'next_id' });
-    bytec_2 // "next_id"
-    // PennyStalker.algo.ts:121
+    bytec_3 // "next_id"
+    // PennyStalker.algo.ts:125
     // this.nextGoalId(Txn.sender).value = currentId + (1 as uint64);
     uncover 2
     app_local_put
-    // PennyStalker.algo.ts:90-95
+    // PennyStalker.algo.ts:92-98
     // createGoal(
     //   name: string,
     //   targetAmount: uint64,
     //   deadline: uint64,
+    //   dignitary: arc4.Address,
     //   mbrPay: gtxn.PaymentTxn,
     // ): uint64 {
     pushbytes 0x151f7c75
     swap
     concat
     log
-    intc_1 // 1
+    intc_2 // 1
     return
 
 
 // PennyStalker.algo.ts::PennyStalker.deposit[routing]() -> void:
 deposit:
-    // PennyStalker.algo.ts:132
+    // PennyStalker.algo.ts:136
     // deposit(goalId: uint64, axfer: gtxn.AssetTransferTxn): void {
     txna ApplicationArgs 1
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
     txn GroupIndex
-    intc_1 // 1
+    intc_2 // 1
     -
     dup
     gtxns TypeEnum
     pushint 4 // axfer
     ==
     assert // transaction type is axfer
-    // PennyStalker.algo.ts:133
+    // PennyStalker.algo.ts:137
     // assert(axfer.xferAsset === this.usdcAsset.value, 'Must deposit USDC');
     dup
     gtxns XferAsset
@@ -367,46 +389,46 @@ deposit:
     // PennyStalker.algo.ts:45
     // usdcAsset = GlobalState<Asset>({ key: 'usdc' });
     bytec_0 // "usdc"
-    // PennyStalker.algo.ts:133
+    // PennyStalker.algo.ts:137
     // assert(axfer.xferAsset === this.usdcAsset.value, 'Must deposit USDC');
     app_global_get_ex
     assert // check GlobalState exists
     ==
     assert // Must deposit USDC
-    // PennyStalker.algo.ts:134
+    // PennyStalker.algo.ts:138
     // assert(axfer.assetReceiver === Global.currentApplicationAddress, 'Asset must be sent to the App');
     dup
     gtxns AssetReceiver
     global CurrentApplicationAddress
     ==
     assert // Asset must be sent to the App
-    // PennyStalker.algo.ts:135
+    // PennyStalker.algo.ts:139
     // assert(axfer.sender === Txn.sender, 'Sender must match the depositor');
     dup
     gtxns Sender
     txn Sender
     ==
     assert // Sender must match the depositor
-    // PennyStalker.algo.ts:137
+    // PennyStalker.algo.ts:141
     // const boxKey = Txn.sender.bytes.concat(op.itob(goalId));
     txn Sender
     uncover 2
     itob
     concat
-    // PennyStalker.algo.ts:49
+    // PennyStalker.algo.ts:50
     // goals = BoxMap<bytes, GoalStruct>({ keyPrefix: 'g' });
-    bytec_3 // "g"
+    bytec_2 // "g"
     swap
     concat
     dup
     cover 2
-    // PennyStalker.algo.ts:138
+    // PennyStalker.algo.ts:142
     // assert(this.goals(boxKey).exists, 'Goal not found');
     dup
     box_len
     bury 1
     assert // Goal not found
-    // PennyStalker.algo.ts:140
+    // PennyStalker.algo.ts:144
     // const goal = { ...this.goals(boxKey).value };
     dup
     box_get
@@ -420,34 +442,40 @@ deposit:
     extract 2 0
     dig 1
     intc_3 // 2
-    intc_2 // 8
+    intc_1 // 8
     box_extract
     btoi
     dig 2
     pushint 10 // 10
-    intc_2 // 8
+    intc_1 // 8
     box_extract
     btoi
     dig 3
     pushint 18 // 18
-    intc_2 // 8
-    box_extract
-    btoi
-    uncover 4
-    pushint 26 // 26
-    intc_2 // 8
+    intc_1 // 8
     box_extract
     btoi
     dig 4
+    pushint 26 // 26
+    intc_1 // 8
+    box_extract
+    btoi
+    uncover 5
+    pushints 34 32 // 34, 32
+    box_extract
+    dig 5
     len
     itob
     extract 6 2
-    uncover 5
+    uncover 6
     concat
-    uncover 4
+    uncover 5
     itob
-    bytec_1 // 0x0022
+    bytec_1 // 0x0042
     swap
+    concat
+    uncover 5
+    itob
     concat
     uncover 4
     itob
@@ -456,18 +484,17 @@ deposit:
     itob
     concat
     uncover 2
-    itob
     concat
     swap
     concat
-    // PennyStalker.algo.ts:141
+    // PennyStalker.algo.ts:145
     // assert(goal.status === STATUS_ACTIVE, 'Goal is no longer active');
     dup
     pushint 26 // 26
     extract_uint64
     !
     assert // Goal is no longer active
-    // PennyStalker.algo.ts:143
+    // PennyStalker.algo.ts:147
     // goal.currentBalance += axfer.assetAmount;
     dup
     pushint 10 // 10
@@ -478,7 +505,7 @@ deposit:
     itob
     replace2 10
     dupn 2
-    // PennyStalker.algo.ts:145
+    // PennyStalker.algo.ts:149
     // if (goal.currentBalance >= goal.targetAmount) {
     pushint 10 // 10
     extract_uint64
@@ -487,14 +514,14 @@ deposit:
     extract_uint64
     >=
     bz deposit_after_if_else@3
-    // PennyStalker.algo.ts:146
+    // PennyStalker.algo.ts:150
     // goal.status = STATUS_COMPLETED;
-    intc_1 // 1
+    intc_2 // 1
     itob
     replace2 26
 
 deposit_after_if_else@3:
-    // PennyStalker.algo.ts:149
+    // PennyStalker.algo.ts:153
     // this.goals(boxKey).value = clone(goal);
     dup
     intc_0 // 0
@@ -511,15 +538,19 @@ deposit_after_if_else@3:
     extract 10 8
     dig 3
     extract 18 8
-    uncover 4
-    extract 26 8
     dig 4
+    extract 26 8
+    uncover 5
+    extract 34 32
+    dig 5
     len
     itob
     extract 6 2
-    uncover 5
+    uncover 6
     concat
-    bytec_1 // 0x0022
+    bytec_1 // 0x0042
+    uncover 6
+    concat
     uncover 5
     concat
     uncover 4
@@ -536,41 +567,41 @@ deposit_after_if_else@3:
     pop
     swap
     box_put
-    // PennyStalker.algo.ts:132
+    // PennyStalker.algo.ts:136
     // deposit(goalId: uint64, axfer: gtxn.AssetTransferTxn): void {
-    intc_1 // 1
+    intc_2 // 1
     return
 
 
 // PennyStalker.algo.ts::PennyStalker.withdraw[routing]() -> void:
 withdraw:
-    // PennyStalker.algo.ts:158
+    // PennyStalker.algo.ts:162
     // withdraw(goalId: uint64): void {
     txna ApplicationArgs 1
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // PennyStalker.algo.ts:159
+    // PennyStalker.algo.ts:163
     // const boxKey = Txn.sender.bytes.concat(op.itob(goalId));
     txn Sender
     swap
     itob
     concat
-    // PennyStalker.algo.ts:49
+    // PennyStalker.algo.ts:50
     // goals = BoxMap<bytes, GoalStruct>({ keyPrefix: 'g' });
-    bytec_3 // "g"
+    bytec_2 // "g"
     swap
     concat
-    // PennyStalker.algo.ts:160
+    // PennyStalker.algo.ts:164
     // assert(this.goals(boxKey).exists, 'Goal not found');
     dup
     box_len
     bury 1
     assert // Goal not found
-    // PennyStalker.algo.ts:162
+    // PennyStalker.algo.ts:166
     // const goal = { ...this.goals(boxKey).value };
     dup
     box_get
@@ -584,34 +615,40 @@ withdraw:
     extract 2 0
     dig 1
     intc_3 // 2
-    intc_2 // 8
+    intc_1 // 8
     box_extract
     btoi
     dig 2
     pushint 10 // 10
-    intc_2 // 8
+    intc_1 // 8
     box_extract
     btoi
     dig 3
     pushint 18 // 18
-    intc_2 // 8
+    intc_1 // 8
     box_extract
     btoi
     dig 4
     pushint 26 // 26
-    intc_2 // 8
+    intc_1 // 8
     box_extract
     btoi
-    dig 4
+    dig 5
+    pushints 34 32 // 34, 32
+    box_extract
+    dig 5
     len
     itob
     extract 6 2
-    uncover 5
+    uncover 6
     concat
-    uncover 4
+    uncover 5
     itob
-    bytec_1 // 0x0022
+    bytec_1 // 0x0042
     swap
+    concat
+    uncover 5
+    itob
     concat
     uncover 4
     itob
@@ -620,11 +657,10 @@ withdraw:
     itob
     concat
     uncover 2
-    itob
     concat
     swap
     concat
-    // PennyStalker.algo.ts:163
+    // PennyStalker.algo.ts:167
     // assert(goal.status !== STATUS_WITHDRAWN, 'Already withdrawn');
     dup
     pushint 26 // 26
@@ -633,31 +669,31 @@ withdraw:
     intc_3 // 2
     !=
     assert // Already withdrawn
-    // PennyStalker.algo.ts:165
+    // PennyStalker.algo.ts:169
     // const isCompleted = goal.status === STATUS_COMPLETED;
-    intc_1 // 1
+    intc_2 // 1
     ==
-    // PennyStalker.algo.ts:166
+    // PennyStalker.algo.ts:170
     // const isExpired = Global.latestTimestamp >= goal.deadline;
     global LatestTimestamp
     dig 2
     pushint 18 // 18
     extract_uint64
     >=
-    // PennyStalker.algo.ts:167
+    // PennyStalker.algo.ts:171
     // assert(isCompleted || isExpired, 'Goal is not complete and deadline has not passed');
     ||
     assert // Goal is not complete and deadline has not passed
-    // PennyStalker.algo.ts:169
+    // PennyStalker.algo.ts:173
     // const amountToSend = goal.currentBalance;
     dup
     pushint 10 // 10
     extract_uint64
-    // PennyStalker.algo.ts:170
+    // PennyStalker.algo.ts:174
     // assert(amountToSend > (0 as uint64), 'No funds to withdraw');
     dup
     assert // No funds to withdraw
-    // PennyStalker.algo.ts:173
+    // PennyStalker.algo.ts:177
     // const nameLen = op.len(Bytes(goal.name));
     dig 1
     intc_0 // 0
@@ -669,23 +705,23 @@ withdraw:
     substring3
     extract 2 0
     len
-    // PennyStalker.algo.ts:174-175
+    // PennyStalker.algo.ts:178-179
     // const valueSize = (STRING_HEADER_BYTES + nameLen + FIXED_FIELDS_BYTES) as uint64;
     // const mbrRefund = (BOX_MBR_BASE + BOX_MBR_PER_BYTE * (BOX_KEY_LEN + valueSize)) as uint64;
-    pushint 75 // 75
+    pushint 107 // 107
     +
-    // PennyStalker.algo.ts:175
+    // PennyStalker.algo.ts:179
     // const mbrRefund = (BOX_MBR_BASE + BOX_MBR_PER_BYTE * (BOX_KEY_LEN + valueSize)) as uint64;
-    pushint 400 // 400
+    intc 4 // 400
     *
-    pushint 2500 // 2500
+    intc 5 // 2500
     +
-    // PennyStalker.algo.ts:178
+    // PennyStalker.algo.ts:182
     // this.goals(boxKey).delete();
     uncover 2
     box_del
     pop
-    // PennyStalker.algo.ts:181-186
+    // PennyStalker.algo.ts:185-190
     // itxn.assetTransfer({
     //   xferAsset: this.usdcAsset.value,
     //   assetAmount: amountToSend,
@@ -693,24 +729,24 @@ withdraw:
     //   fee: 0 as uint64,
     // }).submit();
     itxn_begin
-    // PennyStalker.algo.ts:182
+    // PennyStalker.algo.ts:186
     // xferAsset: this.usdcAsset.value,
     intc_0 // 0
     // PennyStalker.algo.ts:45
     // usdcAsset = GlobalState<Asset>({ key: 'usdc' });
     bytec_0 // "usdc"
-    // PennyStalker.algo.ts:182
+    // PennyStalker.algo.ts:186
     // xferAsset: this.usdcAsset.value,
     app_global_get_ex
     assert // check GlobalState exists
-    // PennyStalker.algo.ts:184
+    // PennyStalker.algo.ts:188
     // assetReceiver: Txn.sender,
     txn Sender
     itxn_field AssetReceiver
     uncover 2
     itxn_field AssetAmount
     itxn_field XferAsset
-    // PennyStalker.algo.ts:181-186
+    // PennyStalker.algo.ts:185-190
     // itxn.assetTransfer({
     //   xferAsset: this.usdcAsset.value,
     //   assetAmount: amountToSend,
@@ -719,11 +755,11 @@ withdraw:
     // }).submit();
     pushint 4 // 4
     itxn_field TypeEnum
-    // PennyStalker.algo.ts:185
+    // PennyStalker.algo.ts:189
     // fee: 0 as uint64,
     intc_0 // 0
     itxn_field Fee
-    // PennyStalker.algo.ts:181-186
+    // PennyStalker.algo.ts:185-190
     // itxn.assetTransfer({
     //   xferAsset: this.usdcAsset.value,
     //   assetAmount: amountToSend,
@@ -731,38 +767,289 @@ withdraw:
     //   fee: 0 as uint64,
     // }).submit();
     itxn_submit
-    // PennyStalker.algo.ts:189-193
+    // PennyStalker.algo.ts:193-197
     // itxn.payment({
     //   receiver: Txn.sender,
     //   amount: mbrRefund,
     //   fee: 0 as uint64,
     // }).submit();
     itxn_begin
-    // PennyStalker.algo.ts:190
+    // PennyStalker.algo.ts:194
     // receiver: Txn.sender,
     txn Sender
     itxn_field Receiver
     itxn_field Amount
-    // PennyStalker.algo.ts:189-193
+    // PennyStalker.algo.ts:193-197
     // itxn.payment({
     //   receiver: Txn.sender,
     //   amount: mbrRefund,
     //   fee: 0 as uint64,
     // }).submit();
-    intc_1 // 1
+    intc_2 // 1
     itxn_field TypeEnum
-    // PennyStalker.algo.ts:192
+    // PennyStalker.algo.ts:196
     // fee: 0 as uint64,
     intc_0 // 0
     itxn_field Fee
-    // PennyStalker.algo.ts:189-193
+    // PennyStalker.algo.ts:193-197
     // itxn.payment({
     //   receiver: Txn.sender,
     //   amount: mbrRefund,
     //   fee: 0 as uint64,
     // }).submit();
     itxn_submit
-    // PennyStalker.algo.ts:158
+    // PennyStalker.algo.ts:162
     // withdraw(goalId: uint64): void {
-    intc_1 // 1
+    intc_2 // 1
+    return
+
+
+// PennyStalker.algo.ts::PennyStalker.emergencyWithdraw[routing]() -> void:
+emergencyWithdraw:
+    // PennyStalker.algo.ts:208
+    // emergencyWithdraw(goalId: uint64, auth: gtxn.ApplicationCallTxn): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txn GroupIndex
+    intc_2 // 1
+    -
+    dup
+    gtxns TypeEnum
+    pushint 6 // appl
+    ==
+    assert // transaction type is appl
+    // PennyStalker.algo.ts:209
+    // const boxKey = Txn.sender.bytes.concat(op.itob(goalId));
+    txn Sender
+    uncover 2
+    itob
+    concat
+    // PennyStalker.algo.ts:50
+    // goals = BoxMap<bytes, GoalStruct>({ keyPrefix: 'g' });
+    bytec_2 // "g"
+    swap
+    concat
+    // PennyStalker.algo.ts:210
+    // assert(this.goals(boxKey).exists, 'Goal not found');
+    dup
+    box_len
+    bury 1
+    assert // Goal not found
+    // PennyStalker.algo.ts:212
+    // const goal = { ...this.goals(boxKey).value };
+    dup
+    box_get
+    pop
+    dup
+    intc_0 // 0
+    extract_uint16
+    dig 1
+    len
+    substring3
+    extract 2 0
+    dig 1
+    intc_3 // 2
+    intc_1 // 8
+    box_extract
+    btoi
+    dig 2
+    pushint 10 // 10
+    intc_1 // 8
+    box_extract
+    btoi
+    dig 3
+    pushint 18 // 18
+    intc_1 // 8
+    box_extract
+    btoi
+    dig 4
+    pushint 26 // 26
+    intc_1 // 8
+    box_extract
+    btoi
+    dig 5
+    pushints 34 32 // 34, 32
+    box_extract
+    dig 5
+    len
+    itob
+    extract 6 2
+    uncover 6
+    concat
+    uncover 5
+    itob
+    bytec_1 // 0x0042
+    swap
+    concat
+    uncover 5
+    itob
+    concat
+    uncover 4
+    itob
+    concat
+    uncover 3
+    itob
+    concat
+    uncover 2
+    concat
+    swap
+    concat
+    // PennyStalker.algo.ts:213
+    // assert(goal.status !== STATUS_WITHDRAWN, 'Already withdrawn');
+    dup
+    pushint 26 // 26
+    extract_uint64
+    intc_3 // 2
+    !=
+    assert // Already withdrawn
+    // PennyStalker.algo.ts:216
+    // assert(auth.sender === goal.dignitary.native, 'Unauthorized dignitary');
+    dig 2
+    gtxns Sender
+    dig 1
+    extract 34 32
+    ==
+    assert // Unauthorized dignitary
+    // PennyStalker.algo.ts:217
+    // assert(auth.appId === Global.currentApplicationId, 'Invalid auth app');
+    uncover 2
+    gtxns ApplicationID
+    global CurrentApplicationID
+    ==
+    assert // Invalid auth app
+    // PennyStalker.algo.ts:221
+    // this.penaltyUntil(Txn.sender).value = Global.latestTimestamp + penaltyDuration;
+    global LatestTimestamp
+    pushint 5184000 // 5184000
+    +
+    txn Sender
+    // PennyStalker.algo.ts:48
+    // penaltyUntil = LocalState<uint64>({ key: 'penalty' });
+    bytec 4 // "penalty"
+    // PennyStalker.algo.ts:221
+    // this.penaltyUntil(Txn.sender).value = Global.latestTimestamp + penaltyDuration;
+    uncover 2
+    app_local_put
+    // PennyStalker.algo.ts:223
+    // const amountToSend = goal.currentBalance;
+    dup
+    pushint 10 // 10
+    extract_uint64
+    // PennyStalker.algo.ts:224
+    // assert(amountToSend > (0 as uint64), 'No funds to withdraw');
+    dup
+    assert // No funds to withdraw
+    // PennyStalker.algo.ts:226
+    // const nameLen = op.len(Bytes(goal.name));
+    dig 1
+    intc_0 // 0
+    extract_uint16
+    dig 2
+    len
+    uncover 3
+    cover 2
+    substring3
+    extract 2 0
+    len
+    // PennyStalker.algo.ts:227-228
+    // const valueSize = (STRING_HEADER_BYTES + nameLen + FIXED_FIELDS_BYTES) as uint64;
+    // const mbrRefund = (BOX_MBR_BASE + BOX_MBR_PER_BYTE * (BOX_KEY_LEN + valueSize)) as uint64;
+    pushint 107 // 107
+    +
+    // PennyStalker.algo.ts:228
+    // const mbrRefund = (BOX_MBR_BASE + BOX_MBR_PER_BYTE * (BOX_KEY_LEN + valueSize)) as uint64;
+    intc 4 // 400
+    *
+    intc 5 // 2500
+    +
+    // PennyStalker.algo.ts:230
+    // this.goals(boxKey).delete();
+    uncover 2
+    box_del
+    pop
+    // PennyStalker.algo.ts:233-238
+    // itxn.assetTransfer({
+    //   xferAsset: this.usdcAsset.value,
+    //   assetAmount: amountToSend,
+    //   assetReceiver: Txn.sender,
+    //   fee: 0 as uint64,
+    // }).submit();
+    itxn_begin
+    // PennyStalker.algo.ts:234
+    // xferAsset: this.usdcAsset.value,
+    intc_0 // 0
+    // PennyStalker.algo.ts:45
+    // usdcAsset = GlobalState<Asset>({ key: 'usdc' });
+    bytec_0 // "usdc"
+    // PennyStalker.algo.ts:234
+    // xferAsset: this.usdcAsset.value,
+    app_global_get_ex
+    assert // check GlobalState exists
+    // PennyStalker.algo.ts:236
+    // assetReceiver: Txn.sender,
+    txn Sender
+    itxn_field AssetReceiver
+    uncover 2
+    itxn_field AssetAmount
+    itxn_field XferAsset
+    // PennyStalker.algo.ts:233-238
+    // itxn.assetTransfer({
+    //   xferAsset: this.usdcAsset.value,
+    //   assetAmount: amountToSend,
+    //   assetReceiver: Txn.sender,
+    //   fee: 0 as uint64,
+    // }).submit();
+    pushint 4 // 4
+    itxn_field TypeEnum
+    // PennyStalker.algo.ts:237
+    // fee: 0 as uint64,
+    intc_0 // 0
+    itxn_field Fee
+    // PennyStalker.algo.ts:233-238
+    // itxn.assetTransfer({
+    //   xferAsset: this.usdcAsset.value,
+    //   assetAmount: amountToSend,
+    //   assetReceiver: Txn.sender,
+    //   fee: 0 as uint64,
+    // }).submit();
+    itxn_submit
+    // PennyStalker.algo.ts:241-245
+    // itxn.payment({
+    //   receiver: Txn.sender,
+    //   amount: mbrRefund,
+    //   fee: 0 as uint64,
+    // }).submit();
+    itxn_begin
+    // PennyStalker.algo.ts:242
+    // receiver: Txn.sender,
+    txn Sender
+    itxn_field Receiver
+    itxn_field Amount
+    // PennyStalker.algo.ts:241-245
+    // itxn.payment({
+    //   receiver: Txn.sender,
+    //   amount: mbrRefund,
+    //   fee: 0 as uint64,
+    // }).submit();
+    intc_2 // 1
+    itxn_field TypeEnum
+    // PennyStalker.algo.ts:244
+    // fee: 0 as uint64,
+    intc_0 // 0
+    itxn_field Fee
+    // PennyStalker.algo.ts:241-245
+    // itxn.payment({
+    //   receiver: Txn.sender,
+    //   amount: mbrRefund,
+    //   fee: 0 as uint64,
+    // }).submit();
+    itxn_submit
+    // PennyStalker.algo.ts:208
+    // emergencyWithdraw(goalId: uint64, auth: gtxn.ApplicationCallTxn): void {
+    intc_2 // 1
     return

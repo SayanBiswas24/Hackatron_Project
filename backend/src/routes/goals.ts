@@ -389,6 +389,8 @@ router.post('/deposit/custodial', async (req, res) => {
         };
       }
 
+      const isNowComplete = newBalance >= goal.targetAmount;
+
       await prisma.goalMetadata.update({
         where: { id: goal.id },
         data: {
@@ -396,9 +398,33 @@ router.post('/deposit/custodial', async (req, res) => {
           nextAutopayAt,
           consecutiveMonths,
           lastIncentiveAt,
-          status: newBalance >= goal.targetAmount ? 'COMPLETED' : 'ACTIVE'
+          status: isNowComplete ? 'COMPLETED' : 'ACTIVE',
+          // Auto-credit: set timestamp now so the wallet balance reflects it immediately
+          ...(isNowComplete && goal.status === 'ACTIVE' ? { completedCreditedAt: new Date() } : {})
         }
       });
+
+      // ── Auto-credit: vault funds → wallet balance ──────────────────────
+      if (isNowComplete && goal.status === 'ACTIVE') {
+        const creditTxId = `AUTOCOMPLETE_${goal.onChainGoalId}_${Date.now()}`;
+        await prisma.activityLog.create({
+          data: {
+            transactionId: creditTxId,
+            userId,
+            onChainGoalId: goal.onChainGoalId,
+            type: 'GOAL_WITHDRAWAL',
+            amount: newBalance
+          }
+        });
+        console.log(`🏦 Auto-credited ${Number(newBalance) / 1_000_000} USDC from completed vault #${goal.onChainGoalId} to wallet`);
+
+        incentiveRecord = {
+          ...incentiveRecord,
+          autoCredit: true,
+          creditedAmount: Number(newBalance) / 1_000_000
+        };
+      }
+      // ──────────────────────────────────────────────────────────────────
     }
 
     res.status(200).json({ 
@@ -445,6 +471,69 @@ router.put('/autopay', async (req, res) => {
   } catch (error: any) {
     console.error('Update autopay error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/goals/complete/:goalId  — Credit a completed vault's balance back to wallet
+router.post('/complete/:goalId', async (req, res) => {
+  try {
+    const { goalId } = req.params;
+    const { userId } = req.body;
+
+    if (!userId || !goalId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const goal = await prisma.goalMetadata.findUnique({ where: { id: goalId } });
+
+    if (!goal) {
+      return res.status(404).json({ error: 'Goal not found' });
+    }
+
+    if (goal.userId !== userId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    if (goal.status !== 'COMPLETED') {
+      return res.status(400).json({ error: 'Vault is not yet completed' });
+    }
+
+    if (goal.completedCreditedAt) {
+      return res.status(200).json({
+        message: 'Funds already credited',
+        alreadyCredited: true,
+        creditedAt: goal.completedCreditedAt
+      });
+    }
+
+    // Credit the vault balance back to wallet by logging a GOAL_WITHDRAWAL
+    const simTxId = `COMPLETE_${goal.onChainGoalId}_${Date.now()}`;
+    await prisma.activityLog.create({
+      data: {
+        transactionId: simTxId,
+        userId,
+        onChainGoalId: goal.onChainGoalId,
+        type: 'GOAL_WITHDRAWAL',
+        amount: goal.currentBalance
+      }
+    });
+
+    // Mark the goal as credited (idempotency guard)
+    await prisma.goalMetadata.update({
+      where: { id: goalId },
+      data: { completedCreditedAt: new Date() }
+    });
+
+    console.log(`🏆 Vault #${goal.onChainGoalId} claimed — ${goal.currentBalance} micro-USDC credited to wallet`);
+
+    return res.status(200).json({
+      success: true,
+      message: `${Number(goal.currentBalance) / 1_000_000} USDC credited to your wallet`,
+      amount: goal.currentBalance.toString()
+    });
+  } catch (error: any) {
+    console.error('Goal completion credit error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 

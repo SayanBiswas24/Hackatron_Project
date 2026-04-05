@@ -8,7 +8,7 @@ import GoalDetailModal from '../../components/dashboard/GoalDetailModal';
 import CreateGoalModal from '../../components/dashboard/CreateGoalModal';
 import EmptyState from '../../components/dashboard/EmptyState';
 import { api } from '../../lib/api';
-import { Target, Plus, Search, Loader2, RefreshCw } from 'lucide-react';
+import { Target, Plus, Search, Loader2, RefreshCw, Trophy } from 'lucide-react';
 
 const GoalsPage: React.FC = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -17,7 +17,7 @@ const GoalsPage: React.FC = () => {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  
+
   const userId = localStorage.getItem('ps_user_id');
 
   const fetchAndSyncGoals = async (isManual = false) => {
@@ -26,10 +26,8 @@ const GoalsPage: React.FC = () => {
     else setIsLoading(true);
 
     try {
-      // First sync with on-chain data
       const updatedGoals = await api.syncGoals(userId);
-      
-      // Transform API goal to UI goal
+
       const uiGoals: Goal[] = updatedGoals.map((g: any) => ({
         id: g.id,
         onChainGoalId: g.onChainGoalId,
@@ -37,24 +35,26 @@ const GoalsPage: React.FC = () => {
         target: Number(g.targetAmount) / 1_000_000,
         saved: Number(g.currentBalance) / 1_000_000,
         color: g.colorHex || '#C0FF00',
-        icon: Target, // Default icon
+        icon: Target,
         createdAt: new Date(g.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         deadline: new Date(g.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        frequency: g.autopayEnabled ? 'Autopay' : 'Flexible',
+        lastDeposit: 'Recent',
         status: g.status.toLowerCase(),
-        yieldEarned: 0 // Fetch from activity or indexer later
+        yieldEarned: 0,
+        consecutiveMonths: g.consecutiveMonths || 0,
+        lastIncentiveAt: g.lastIncentiveAt || null,
+        completedCreditedAt: g.completedCreditedAt || null,
       }));
 
       setGoals(uiGoals);
 
-      // Also update selectedGoal if it exists to refresh modal data
       if (selectedGoal) {
         const updatedSelected = uiGoals.find(g => g.id === selectedGoal.id);
-        if (updatedSelected) {
-          setSelectedGoal(updatedSelected);
-        }
+        if (updatedSelected) setSelectedGoal(updatedSelected);
       }
     } catch (err) {
-      console.error("Failed to sync goals:", err);
+      console.error('Failed to sync goals:', err);
     } finally {
       setIsLoading(false);
       setIsSyncing(false);
@@ -74,12 +74,13 @@ const GoalsPage: React.FC = () => {
     setGoals([newGoal, ...goals]);
   };
 
+
+  const activeGoals = goals.filter(g => g.status !== 'completed');
+  const completedGoals = goals.filter(g => g.status === 'completed');
+
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
 
   const itemVariants = {
@@ -95,7 +96,7 @@ const GoalsPage: React.FC = () => {
         <div className="relative z-10 max-w-7xl mx-auto space-y-10 pb-20">
           {/* Header Section */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               className="space-y-1"
@@ -103,74 +104,101 @@ const GoalsPage: React.FC = () => {
               <h1 className="text-4xl font-black text-white tracking-tight">Manage Your <span className="text-[#C0FF00]">Vaults</span></h1>
               <p className="text-sm text-gray-500 font-medium italic">Track your goal-conditioned savings across the Algorand blockchain.</p>
             </motion.div>
-            
-            <motion.div 
+
+            <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-3"
             >
-               <div className="relative hidden sm:block">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                  <input 
-                    type="text" 
-                    placeholder="Search vaults..."
-                    className="bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#C0FF00]/40 transition-all w-64"
-                  />
-               </div>
-               <button 
-                  onClick={() => fetchAndSyncGoals(true)}
-                  disabled={isSyncing}
-                  className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all disabled:opacity-50"
-                  title="Sync with Blockchain"
-                >
-                  <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} />
-                </button>
-               <button 
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="flex items-center gap-2 bg-[#C0FF00] hover:brightness-110 text-black px-6 py-2.5 rounded-xl font-black text-sm uppercase tracking-widest shadow-[0_0_20px_rgba(192,255,0,0.2)] transition-all active:scale-95"
-                >
-                  <Plus size={18} strokeWidth={3} /> New Goal
-               </button>
+              <div className="relative hidden sm:block">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search vaults..."
+                  className="bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#C0FF00]/40 transition-all w-64"
+                />
+              </div>
+              <button
+                onClick={() => fetchAndSyncGoals(true)}
+                disabled={isSyncing}
+                className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all disabled:opacity-50"
+                title="Sync with Blockchain"
+              >
+                <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} />
+              </button>
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center gap-2 bg-[#C0FF00] hover:brightness-110 text-black px-6 py-2.5 rounded-xl font-black text-sm uppercase tracking-widest shadow-[0_0_20px_rgba(192,255,0,0.2)] transition-all active:scale-95"
+              >
+                <Plus size={18} strokeWidth={3} /> New Goal
+              </button>
             </motion.div>
           </div>
 
-          {/* Goals Grid */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-               <h2 className="text-xl font-black text-white tracking-tight italic uppercase">Active Savings Targets</h2>
-               <div className="h-px flex-1 bg-white/5" />
-               <span className="text-[0.65rem] font-bold text-gray-500 uppercase tracking-widest">{String(goals.length).padStart(2, '0')} Total Vaults</span>
+          {isLoading ? (
+            <div className="py-20 flex flex-col items-center justify-center space-y-4">
+              <Loader2 size={48} className="text-[#C0FF00] animate-spin" />
+              <p className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest">Accessing Blockchain Explorer...</p>
             </div>
-            
-            {isLoading ? (
-               <div className="py-20 flex flex-col items-center justify-center space-y-4">
-                  <Loader2 size={48} className="text-[#C0FF00] animate-spin" />
-                  <p className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest">Accessing Blockchain Explorer...</p>
-               </div>
-            ) : goals.length === 0 ? (
-              <EmptyState type="goals" onCreateClick={() => setIsCreateModalOpen(true)} />
-            ) : (
-              <motion.div 
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 lg:grid-cols-2 gap-8"
-              >
-                {goals.map((goal) => (
-                  <motion.div key={goal.id} variants={itemVariants}>
-                    <GoalCard 
-                      goal={goal} 
-                      onClick={handleGoalClick}
-                    />
+          ) : goals.length === 0 ? (
+            <EmptyState type="goals" onCreateClick={() => setIsCreateModalOpen(true)} />
+          ) : (
+            <div className="space-y-12">
+              {/* ── Active Vaults ── */}
+              {activeGoals.length > 0 && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-xl font-black text-white tracking-tight italic uppercase">Active Savings Targets</h2>
+                    <div className="h-px flex-1 bg-white/5" />
+                    <span className="text-[0.65rem] font-bold text-gray-500 uppercase tracking-widest">{String(activeGoals.length).padStart(2, '0')} Active</span>
+                  </div>
+                  <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+                  >
+                    {activeGoals.map((goal) => (
+                      <motion.div key={goal.id} variants={itemVariants}>
+                        <GoalCard goal={goal} onClick={handleGoalClick} />
+                      </motion.div>
+                    ))}
                   </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </div>
+                </div>
+              )}
+
+              {/* ── Completed Vaults ── */}
+              {completedGoals.length > 0 && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <Trophy size={18} className="text-[#C0FF00]" />
+                    <h2 className="text-xl font-black text-[#C0FF00] tracking-tight italic uppercase">Completed Vaults</h2>
+                    <div className="h-px flex-1 bg-[#C0FF00]/10" />
+                    <span className="text-[0.65rem] font-bold text-[#C0FF00]/60 uppercase tracking-widest">{String(completedGoals.length).padStart(2, '0')} Completed</span>
+                  </div>
+                  <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+                  >
+                    {completedGoals.map((goal) => (
+                      <motion.div key={goal.id} variants={itemVariants}>
+                        <GoalCard
+                          goal={goal}
+                          onClick={handleGoalClick}
+                        />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Detail Modal */}
-        <GoalDetailModal 
+        <GoalDetailModal
           goal={selectedGoal}
           isOpen={isDetailModalOpen}
           onClose={() => setIsDetailModalOpen(false)}
@@ -178,7 +206,7 @@ const GoalsPage: React.FC = () => {
         />
 
         {/* Create Goal Modal */}
-        <CreateGoalModal 
+        <CreateGoalModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onSuccess={handleAddGoal}

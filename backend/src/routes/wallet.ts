@@ -385,6 +385,32 @@ router.post('/withdraw', async (req, res) => {
       return res.status(400).json({ error: 'User ID and amount are required' });
     }
 
+    // ── Compute free wallet balance from ActivityLog ──────────────────────
+    const activities = await prisma.activityLog.findMany({ where: { userId } });
+    let freeBalance = 0n;
+    for (const a of activities) {
+      const type = a.type.toUpperCase();
+      const amt = a.amount || 0n;
+      if (type === 'PURCHASE' || (type === 'DEPOSIT' && a.onChainGoalId === null)) {
+        freeBalance += amt;
+      } else if (type === 'WITHDRAWAL' && a.onChainGoalId === null) {
+        freeBalance -= amt;
+      } else if ((type === 'DEPOSIT' && a.onChainGoalId !== null) || type === 'AUTOPAY_SUCCESS') {
+        freeBalance -= amt;
+      } else if (type === 'GOAL_WITHDRAWAL' || (type === 'WITHDRAWAL' && a.onChainGoalId !== null)) {
+        freeBalance += amt;
+      }
+    }
+
+    const requestedMicroUsdc = BigInt(Math.floor(Number(amount) * 1_000_000));
+    if (requestedMicroUsdc > freeBalance) {
+      const maxUsdc = Number(freeBalance) / 1_000_000;
+      return res.status(400).json({
+        error: `Insufficient balance. Your current free balance is ${maxUsdc.toFixed(2)} USDC.`
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     try {
       // Perform the on-chain transfer from User to Platform
       const txId = await withdrawUsdc(userId, Number(amount));

@@ -36,6 +36,7 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
   const [activeMethod, setActiveMethod] = useState<Method>('upi');
   const [step, setStep] = useState<Step>('select');
   const [amount, setAmount] = useState('5000'); // Default 5000 INR
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const isExecuting = useRef(false);
 
   useEffect(() => {
@@ -51,6 +52,26 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
       await api.fetchWalletBalance(userId);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  // Derived: USDC equivalent of current INR input
+  const parsedAmountUsdc = toUSDC(parseFloat(amount) || 0);
+  const isOverBalance = activeTab === 'withdraw' && parsedAmountUsdc > currentBalance;
+
+  const handleAmountChange = (val: string) => {
+    setAmount(val);
+    if (activeTab === 'withdraw') {
+      const usdc = toUSDC(parseFloat(val) || 0);
+      if (usdc > currentBalance) {
+        setWithdrawError(
+          `Exceeds your wallet balance of ${formatUSDC(currentBalance)} USDC (≈ ${formatINR(currentBalance)})`
+        );
+      } else {
+        setWithdrawError(null);
+      }
+    } else {
+      setWithdrawError(null);
     }
   };
 
@@ -71,9 +92,6 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
         await api.purchaseUsdc(userId, usdcToProcess, methodLabel);
         toast.success(`₹${amountToProcess.toLocaleString()} converted to ${usdcToProcess.toFixed(2)} USDC!`);
       } else {
-        if (usdcToProcess > currentBalance) {
-          throw new Error('Insufficient USDC balance');
-        }
         await api.withdrawUsdc(userId, usdcToProcess);
         toast.success(`${usdcToProcess.toFixed(2)} USDC converted to ${formatINR(usdcToProcess)} and sent to bank!`);
       }
@@ -135,21 +153,23 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
             {/* Tab Navigation */}
             {step !== 'processing' && step !== 'success' && (
               <div className="p-1 mx-8 mt-6 bg-white/[0.03] rounded-2xl border border-white/5 flex gap-1">
-                {(['deposit', 'withdraw'] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => { setActiveTab(t); setStep('select'); }}
-                    className={cn(
-                      "flex-1 py-3 rounded-xl text-[0.65rem] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
-                      activeTab === t 
-                        ? "bg-[#C0FF00] text-black shadow-[0_0_20px_rgba(192,255,0,0.2)]" 
-                        : "text-gray-500 hover:text-white hover:bg-white/5"
-                    )}
-                  >
-                    {t === 'deposit' ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}
-                    {t === 'deposit' ? 'Add Funds' : 'Withdraw'}
-                  </button>
-                ))}
+                {(['deposit', 'withdraw'] as const).map((t) => {
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => { setActiveTab(t); setStep('select'); setWithdrawError(null); }}
+                      className={cn(
+                        "flex-1 py-3 rounded-xl text-[0.65rem] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+                        activeTab === t
+                          ? "bg-[#C0FF00] text-black shadow-[0_0_20px_rgba(192,255,0,0.2)]"
+                          : "text-gray-500 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      {t === 'deposit' ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}
+                      {t === 'deposit' ? 'Add Funds' : 'Withdraw'}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -214,11 +234,35 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
                         <input 
                           type="number"
                           value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
-                          className="w-full bg-white/[0.03] border border-white/10 rounded-3xl py-6 px-12 text-3xl font-black text-white outline-none focus:border-[#C0FF00]/50 italic leading-none"
+                          onChange={(e) => handleAmountChange(e.target.value)}
+                          className={cn(
+                            "w-full bg-white/[0.03] border rounded-3xl py-6 px-12 text-3xl font-black text-white outline-none italic leading-none transition-colors",
+                            isOverBalance
+                              ? "border-red-500/60 focus:border-red-500"
+                              : "border-white/10 focus:border-[#C0FF00]/50"
+                          )}
                           autoFocus
                         />
                       </div>
+
+                      {/* Inline withdrawal error */}
+                      {isOverBalance && withdrawError && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 border border-red-500/30 rounded-2xl">
+                          <span className="text-red-400 text-lg leading-none">⚠</span>
+                          <p className="text-[0.65rem] font-bold text-red-400 leading-tight">{withdrawError}</p>
+                        </div>
+                      )}
+
+                      {/* Max balance hint for withdraw */}
+                      {activeTab === 'withdraw' && !isOverBalance && (
+                        <button
+                          type="button"
+                          onClick={() => handleAmountChange(String(Math.floor(currentBalance * exchangeRate)))}
+                          className="text-[0.6rem] font-black text-[#C0FF00]/70 hover:text-[#C0FF00] uppercase tracking-widest text-right transition-colors ml-auto block"
+                        >
+                          Max: {formatINR(currentBalance)} →
+                        </button>
+                      )}
                       
                       <div className="flex justify-between p-4 bg-white/[0.02] rounded-2xl border border-white/5">
                         <div className="space-y-1">
@@ -243,7 +287,7 @@ const FundAccountModal: React.FC<FundAccountModalProps> = ({
                         </button>
                         <button 
                             onClick={() => setStep(activeMethod === 'card' ? 'payment' : 'processing')}
-                            disabled={!amount || parseFloat(amount) <= 0}
+                            disabled={!amount || parseFloat(amount) <= 0 || isOverBalance}
                             className="flex-[2] py-4 bg-[#C0FF00] text-black font-black uppercase text-[0.65rem] tracking-widest rounded-2xl shadow-[0_0_30px_rgba(192,255,0,0.2)] hover:scale-[1.02] transition-all font-mono flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Confirm {activeTab === 'deposit' ? 'Deposit' : 'Withdrawal'}

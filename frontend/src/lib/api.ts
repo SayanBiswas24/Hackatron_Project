@@ -204,5 +204,17 @@ export const api = {
     const res = await fetch(`${API_BASE_URL}/analytics/snapshot/${userId}`);
     if (!res.ok) throw new Error('Failed to fetch analytics');
     return res.json();
+  },
+
+  // Goals — Claim completed vault funds back to wallet
+  async completeGoal(userId: string, goalId: string) {
+    const res = await fetch(`${API_BASE_URL}/goals/complete/${goalId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Failed to claim vault funds');
+    return result;
   }
 };

@@ -65,6 +65,9 @@ model GoalMetadata {
   consecutiveMonths Int       @default(0)
   lastIncentiveAt   DateTime? // To prevent multiple incentives in one month
 
+  // Completion Credit
+  completedCreditedAt DateTime? // Set when completed vault funds are credited back to wallet
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

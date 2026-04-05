@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '../ui/card';
-import { Clock, TrendingUp, Calendar, ChevronRight } from 'lucide-react';
+import { Clock, TrendingUp, Calendar, ChevronRight, Trophy, Sparkles, CheckCircle2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useCurrency } from '../../context/CurrencyContext';
 
@@ -20,6 +20,7 @@ export interface Goal {
    yieldEarned: number;
    consecutiveMonths: number;
    lastIncentiveAt: string | null;
+   completedCreditedAt?: string | null;
 }
 
 interface GoalCardProps {
@@ -34,6 +35,77 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onClick }) => {
    const savedUsdc = Number(goal.saved);
    const targetUsdc = Number(goal.target);
    const yieldUsdc = Number(goal.yieldEarned);
+
+   const isCompleted = goal.status === 'completed';
+
+   if (isCompleted) {
+      return (
+         <Card
+            className="group bg-[#141C18] border-[#C0FF00]/20 hover:border-[#C0FF00]/40 transition-all duration-500 cursor-pointer overflow-hidden relative"
+            onClick={() => onClick(goal)}
+         >
+            {/* Completion glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#C0FF00]/5 via-transparent to-yellow-400/5 pointer-events-none" />
+            <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full blur-[100px] bg-[#C0FF00]/20 pointer-events-none" />
+
+            <CardContent className="p-6 relative z-10">
+               {/* Header */}
+               <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-4">
+                     <div className="p-3 rounded-2xl bg-[#C0FF00]/10 border border-[#C0FF00]/30 group-hover:scale-110 transition-transform duration-500 relative">
+                        <goal.icon size={24} style={{ color: '#C0FF00' }} strokeWidth={1.5} />
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#C0FF00] rounded-full flex items-center justify-center">
+                           <CheckCircle2 size={10} className="text-black" strokeWidth={3} />
+                        </div>
+                     </div>
+                     <div>
+                        <h3 className="text-xl font-black text-white tracking-tight">{goal.name}</h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                           <span className="text-[0.65rem] font-bold text-gray-500 flex items-center gap-1 uppercase">
+                              <Calendar size={10} /> Created {goal.createdAt}
+                           </span>
+                        </div>
+                     </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                     <div className="px-2 py-1 rounded-lg bg-[#C0FF00]/15 border border-[#C0FF00]/30 text-[0.6rem] font-black text-[#C0FF00] uppercase tracking-tighter flex items-center gap-1">
+                        <Trophy size={10} />
+                        VAULT COMPLETE
+                     </div>
+                  </div>
+               </div>
+
+               {/* Progress values */}
+               <div className="flex justify-between items-end mb-3">
+                  <div>
+                     <p className="text-[0.65rem] text-gray-500 font-black uppercase tracking-widest mb-1.5 opacity-60">Final Balance</p>
+                     <div className="flex items-baseline gap-1.5 leading-none">
+                        <span className="text-2xl font-black tracking-tighter text-[#C0FF00]">{formatINR(savedUsdc)}</span>
+                        <span className="text-[0.65rem] text-gray-600 font-bold uppercase tracking-widest">/ {formatINR(targetUsdc, true)}</span>
+                     </div>
+                  </div>
+                  <span className="text-xl font-black text-[#C0FF00] tracking-tighter">100%</span>
+               </div>
+
+               {/* Full progress bar */}
+               <div className="relative h-2 w-full bg-white/5 border border-[#C0FF00]/20 rounded-full overflow-hidden mb-4">
+                  <div
+                     className="h-full rounded-full w-full"
+                     style={{ background: 'linear-gradient(90deg, #C0FF0055, #C0FF00)', boxShadow: '0 0 20px rgba(192,255,0,0.5)' }}
+                  >
+                     <div className="w-1 h-full bg-white/30 animate-pulse float-right" />
+                  </div>
+               </div>
+
+               {/* Auto-credited confirmation */}
+               <div className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#C0FF00]/10 border border-[#C0FF00]/20">
+                  <Sparkles size={14} className="text-[#C0FF00]" />
+                  <span className="text-[0.65rem] font-black text-[#C0FF00] uppercase tracking-widest">Funds Auto-Credited to Wallet</span>
+               </div>
+            </CardContent>
+         </Card>
+      );
+   }
 
    return (
       <Card
