@@ -262,9 +262,25 @@ router.post('/deposit/custodial', async (req, res) => {
       return res.status(400).json({ error: 'Valid custodial vault not found' });
     }
 
+    const goal = await prisma.goalMetadata.findUnique({
+      where: { userId_onChainGoalId: { userId, onChainGoalId: Number(onChainGoalId) } }
+    });
+
+    if (!goal) {
+      return res.status(404).json({ error: 'Goal not found' });
+    }
+
     const client = getCustodialClient(user.encryptedMnemonic);
     const usdcAssetId = await client.getUsdcAssetId();
-    const amountMicroUsdc = BigInt(Math.round(Number(amount) * 1_000_000)); // Safely convert float to microUSDC
+    const amountMicroUsdc = BigInt(Math.round(Number(amount) * 1_000_000));
+    const remainingMicroUsdc = goal.targetAmount - goal.currentBalance;
+
+    if (amountMicroUsdc > remainingMicroUsdc) {
+      const maxAllowedUsdc = Number(remainingMicroUsdc) / 1_000_000;
+      return res.status(400).json({ 
+        error: `Deposit exceeds goal target. Max allowed: ${maxAllowedUsdc.toFixed(2)} USDC.` 
+      });
+    }
 
     console.log(`💰 Preparing custodial deposit for ${user.walletAddress}...`);
 
@@ -286,10 +302,6 @@ router.post('/deposit/custodial', async (req, res) => {
         type: 'deposit',
         amount: amountMicroUsdc
       }
-    });
-
-    const goal = await prisma.goalMetadata.findUnique({
-      where: { userId_onChainGoalId: { userId, onChainGoalId: Number(onChainGoalId) } }
     });
 
     let incentiveRecord: any = null;

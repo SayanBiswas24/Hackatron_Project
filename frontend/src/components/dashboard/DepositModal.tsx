@@ -35,6 +35,8 @@ const DepositModal: React.FC<DepositModalProps> = ({ goal, isOpen, onClose, onSu
   const userId = localStorage.getItem('ps_user_id');
   const { formatUSDC } = useCurrency();
 
+  const remainingAmount = goal ? Number(goal.target) - Number(goal.saved) : 0;
+
   const fetchBalance = async () => {
     if (!userId) return;
     try {
@@ -61,6 +63,11 @@ const DepositModal: React.FC<DepositModalProps> = ({ goal, isOpen, onClose, onSu
     const depositAmount = parseFloat(amount);
     if (depositAmount > balance) {
       setError(`Insufficient balance. You have ${balance.toLocaleString()} USDC.`);
+      return;
+    }
+
+    if (depositAmount > remainingAmount) {
+      setError(`Only deposit of max remaining balance is allowed. Max allowed: ${remainingAmount.toFixed(2)} USDC.`);
       return;
     }
 
@@ -155,16 +162,21 @@ const DepositModal: React.FC<DepositModalProps> = ({ goal, isOpen, onClose, onSu
                         <div className="flex justify-between items-end ml-1">
                            <label className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest">Amount to Save</label>
                            <div className="flex items-center gap-2">
-                              <span className="text-[0.6rem] font-bold text-gray-500 uppercase tracking-tighter">
-                                Balance: {loadingBalance ? '...' : `${balance.toLocaleString()} USDC`}
-                              </span>
-                              <button 
-                                type="button" 
-                                onClick={() => setIsFundingOpen(true)}
-                                className="text-[0.6rem] font-black text-[#C0FF00] uppercase underline hover:text-white transition-colors"
-                              >
-                                Fund
-                              </button>
+                            <div className="flex items-center gap-3">
+                               <span className="text-[0.6rem] font-bold text-gray-500 uppercase tracking-tighter">
+                                 Balance: {loadingBalance ? '...' : `${balance.toLocaleString()} USDC`}
+                               </span>
+                               <span className="text-[0.6rem] font-black text-[#C0FF00]/60 uppercase tracking-tighter">
+                                 Required: {remainingAmount.toLocaleString()} USDC
+                               </span>
+                               <button 
+                                 type="button" 
+                                 onClick={() => setIsFundingOpen(true)}
+                                 className="text-[0.6rem] font-black text-[#C0FF00] uppercase underline hover:text-white transition-colors"
+                               >
+                                 Fund
+                               </button>
+                            </div>
                            </div>
                         </div>
                         <div className="relative group">
@@ -180,7 +192,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ goal, isOpen, onClose, onSu
                           />
                           <button 
                             type="button"
-                            onClick={() => setAmount(balance.toString())}
+                            onClick={() => setAmount(Math.min(balance, remainingAmount).toFixed(2))}
                             className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 rounded-lg bg-[#C0FF00]/10 text-[#C0FF00] text-[0.6rem] font-black uppercase tracking-widest border border-[#C0FF00]/20 hover:bg-[#C0FF00]/20 transition-all"
                           >
                             MAX
