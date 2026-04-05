@@ -52,20 +52,25 @@ const DashboardPage: React.FC = () => {
     if (!userId) return;
     try {
       setIsLoading(true);
+      // These two are safe (they return defaults on error)
       const [user, balance] = await Promise.all([
-        api.fetchUser(userId),
-        api.fetchWalletBalance(userId)
+        api.fetchUser(userId).catch(() => null),
+        api.fetchWalletBalance(userId).catch(() => ({ usdc: '0', algo: '0', address: null }))
       ]);
-      setUserData(user);
-      setWalletBalance(balance);
-      
+      if (user) setUserData(user);
+      if (balance) setWalletBalance(balance);
+    } catch (err) {
+      console.error('Error fetching user data:', err);
+    }
+
+    try {
       const fetchedGoals = await api.fetchGoals(userId);
       const mappedGoals = fetchedGoals.map((g: any) => ({
         id: g.id,
         onChainGoalId: g.onChainGoalId,
         name: g.title,
-        target: Number(g.targetAmount), 
-        saved: Number(g.currentBalance),
+        target: Number(g.targetAmount) / 1_000_000,
+        saved: Number(g.currentBalance) / 1_000_000,
         color: g.colorHex || '#C0FF00',
         icon: Target,
         createdAt: new Date(g.createdAt).toLocaleDateString(),
@@ -75,7 +80,12 @@ const DashboardPage: React.FC = () => {
         status: g.status.toLowerCase(),
         yieldEarned: 0,
       }));
+      setGoals(mappedGoals);
+    } catch (err) {
+      console.error('Error fetching goals:', err);
+    }
 
+    try {
       const fetchedActivities = await api.fetchActivity(userId);
       const mappedActivities = fetchedActivities.map((a: any) => ({
         id: a.id,
@@ -84,17 +94,14 @@ const DashboardPage: React.FC = () => {
         amount: a.amount ? Number(a.amount) / 1000000 : null,
         date: new Date(a.timestamp).toLocaleDateString(),
         status: 'completed',
-        goal: fetchedGoals.find((g: any) => g.onChainGoalId === a.onChainGoalId)?.title || 'Vault',
+        goal: 'Vault',
       }));
-      
-      setGoals(mappedGoals);
       setActivities(mappedActivities);
     } catch (err) {
-      console.error("Error fetching dashboard data:", err);
-      addToast('error', 'Connection Error', 'Failed to sync with backend.');
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching activities:', err);
     }
+
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -167,7 +174,17 @@ const DashboardPage: React.FC = () => {
                 <h1 className="text-4xl font-black tracking-tight text-white italic uppercase">
                   Hello, <span className="text-[#C0FF00] not-italic">{userData?.displayName || 'Satoshi'}</span>
                 </h1>
-                <p className="text-sm text-gray-400 font-medium tracking-tight">Your PennyStalker vault strategy is loaded securely.</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-gray-400 font-medium tracking-tight">Your PennyStalker vault strategy is loaded securely.</p>
+                  <div className={cn(
+                    "px-2 py-0.5 rounded-md text-[0.6rem] font-black uppercase tracking-widest border transition-all",
+                    userData?.governanceEnabled 
+                      ? "bg-[#C0FF00]/10 border-[#C0FF00]/20 text-[#C0FF00]" 
+                      : "bg-white/5 border-white/10 text-gray-500"
+                  )}>
+                    {userData?.governanceEnabled ? "Staking Active: 5.0% APY" : "Standard Vault: 0.5% APY"}
+                  </div>
+                </div>
               </motion.div>
 
               <motion.div variants={itemVariants} className="flex items-center gap-3">
@@ -190,7 +207,7 @@ const DashboardPage: React.FC = () => {
             <motion.div variants={itemVariants}>
               <StatsGrid 
                 isEmpty={isEmpty} 
-                totalSaved={totalSaved / 1000000}
+                totalSaved={totalSaved}
                 activeGoals={activeGoalsCount}
                 averageProgress={averageProgress}
                 walletBalance={Number(walletBalance.usdc) / 1000000}

@@ -79,6 +79,7 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                      {/* Hero Stats */}
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
+<<<<<<< HEAD
                            <span className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest mb-1 block leading-none">Total Balance</span>
                            <div className="flex flex-col">
                               <div className="flex items-baseline gap-1 mt-1">
@@ -106,6 +107,26 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({ goal, isOpen, onClose
                                  <span className="text-[0.65rem] text-[#C0FF00]/60 font-bold">APY 8.4%</span>
                               </div>
                               <span className="text-[0.55rem] text-[#C0FF00]/40 font-bold uppercase tracking-widest mt-0.5">≈ {formatUSDC(yieldUsdc)}</span>
+=======
+                           <span className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest mb-1 block">Total Balance</span>
+                           <div className="flex items-baseline gap-1">
+                              <span className="text-xl font-black text-white tracking-tighter">${Number(goal.saved).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="text-[0.65rem] text-neon-lime font-bold">LIVE</span>
+                           </div>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
+                           <span className="text-[0.6rem] font-black text-gray-500 uppercase tracking-widest mb-1 block">Target Amount</span>
+                           <div className="flex items-baseline gap-1">
+                              <span className="text-xl font-black text-white tracking-tighter">${Number(goal.target).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="text-[0.65rem] text-gray-600 font-bold">GOAL</span>
+                           </div>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-[#C0FF00]/5 border border-[#C0FF00]/10">
+                           <span className="text-[0.6rem] font-black text-[#C0FF00] uppercase tracking-widest mb-1 block">Yield Generated</span>
+                           <div className="flex items-baseline gap-1">
+                              <span className="text-xl font-black text-[#C0FF00] tracking-tighter">+${Number(goal.yieldEarned).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="text-[0.65rem] text-[#C0FF00]/60 font-bold">APY 8.4%</span>
+>>>>>>> 721d822e648bb8b08fc2190563be58bc09d9c9d6
                            </div>
                         </div>
                      </div>

@@ -61,7 +61,8 @@ router.post('/signup', async (req, res) => {
       message: 'User created successfully',
       userId: user.id,
       fullName: user.fullName,
-      onboardingComplete: user.onboardingComplete
+      onboardingComplete: user.onboardingComplete,
+      governanceEnabled: user.governanceEnabled
     });
   } catch (error: any) {
     console.error('Signup error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
@@ -89,10 +90,37 @@ router.post('/signin', async (req, res) => {
       displayName: user.displayName,
       fullName: user.fullName,
       onboardingComplete: user.onboardingComplete,
-      walletType: user.walletType
+      walletType: user.walletType,
+      governanceEnabled: user.governanceEnabled
     });
   } catch (error: any) {
     console.error('Signin error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// PUT /api/users/:userId - Update user settings
+router.put('/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { displayName, themePreference, governanceEnabled } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(displayName !== undefined && { displayName }),
+        ...(themePreference !== undefined && { themePreference }),
+        ...(governanceEnabled !== undefined && { governanceEnabled: Boolean(governanceEnabled) })
+      }
+    });
+
+    res.json({
+      message: 'Profile updated successfully',
+      displayName: updatedUser.displayName,
+      governanceEnabled: updatedUser.governanceEnabled
+    });
+  } catch (error: any) {
+    console.error('Update error:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });

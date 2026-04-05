@@ -18,7 +18,7 @@ const router = express.Router();
 // POST /api/wallet/setup - Handle one-time wallet setup during onboarding
 router.post('/setup', async (req, res) => {
   try {
-    const { userId, type, mnemonic, walletAddress } = req.body;
+    const { userId, type, mnemonic, walletAddress, governanceEnabled = false } = req.body;
 
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
@@ -70,7 +70,8 @@ router.post('/setup', async (req, res) => {
         walletAddress: finalAddress,
         walletType: type,
         encryptedMnemonic,
-        onboardingComplete: true
+        onboardingComplete: true,
+        governanceEnabled: Boolean(governanceEnabled)
       }
     });
 
@@ -171,10 +172,23 @@ router.get('/balance/:userId', async (req, res) => {
       let dbBalance = 0n;
       activities.forEach(a => {
         const type = a.type.toLowerCase();
-        if (type === 'deposit' || type === 'purchase') {
-          dbBalance += (a.amount || 0n);
-        } else if (type === 'withdrawal') {
-          dbBalance -= (a.amount || 0n);
+        const amt = a.amount || 0n;
+        
+        // Wallet Funding (Deposit to wallet)
+        if (type === 'purchase' || (type === 'deposit' && a.onChainGoalId === null)) {
+          dbBalance += amt;
+        } 
+        // Wallet Withdrawal (Sell USDC for Fiat)
+        else if (type === 'withdrawal' && a.onChainGoalId === null) {
+          dbBalance -= amt;
+        }
+        // Goal Deposit or Autopay (Move from Wallet to Goal)
+        else if ((type === 'deposit' && a.onChainGoalId !== null) || type === 'autopay_success') {
+          dbBalance -= amt;
+        }
+        // Goal Withdrawal (Move from Goal back to Wallet)
+        else if (type === 'goal_withdrawal' || type === 'withdrawal' && a.onChainGoalId !== null) {
+          dbBalance += amt;
         }
       });
 
@@ -197,10 +211,16 @@ router.get('/balance/:userId', async (req, res) => {
       let dbBalance = 0n;
       activities.forEach(a => {
         const type = a.type.toLowerCase();
-        if (type === 'deposit' || type === 'purchase') {
-          dbBalance += (a.amount || 0n);
-        } else if (type === 'withdrawal') {
-          dbBalance -= (a.amount || 0n);
+        const amt = a.amount || 0n;
+        
+        if (type === 'purchase' || (type === 'deposit' && a.onChainGoalId === null)) {
+          dbBalance += amt;
+        } else if (type === 'withdrawal' && a.onChainGoalId === null) {
+          dbBalance -= amt;
+        } else if ((type === 'deposit' && a.onChainGoalId !== null) || type === 'autopay_success') {
+          dbBalance -= amt;
+        } else if (type === 'goal_withdrawal' || type === 'withdrawal' && a.onChainGoalId !== null) {
+          dbBalance += amt;
         }
       });
 

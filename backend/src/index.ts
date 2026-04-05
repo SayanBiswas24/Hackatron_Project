@@ -7,7 +7,11 @@ import userRoutes from './routes/users';
 import goalRoutes from './routes/goals';
 import activityRoutes from './routes/activity';
 import walletRoutes from './routes/wallet';
+<<<<<<< HEAD
 import marketRoutes from './routes/market';
+=======
+import { processScheduledAutopays } from './lib/autopay';
+>>>>>>> 721d822e648bb8b08fc2190563be58bc09d9c9d6
 
 // Debug env
 console.log("DATABASE_URL:", process.env.DATABASE_URL);
@@ -35,5 +39,14 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Backend running on port ${port}`);
+  console.log(`🚀 PennyStalker Backend running at http://localhost:${port}`);
+  
+  // Initialize Autopay Scheduler (Runs every hour)
+  const AUTOPAY_INTERVAL = 1000 * 60 * 60; // 1 hour
+  setInterval(() => {
+    processScheduledAutopays().catch(err => console.error('❌ Scheduler Error:', err));
+  }, AUTOPAY_INTERVAL);
+
+  // Immediate check on startup (optional but helpful for testing)
+  processScheduledAutopays().catch(err => console.error('❌ Initial Autopay Check Error:', err));
 });
